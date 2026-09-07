@@ -55,6 +55,15 @@ export default defineConfig({
             items: [
               { text: '常见问题', link: '/troubleshoot/faq' },
             ]
+          },
+          {
+            text: '开发设计',
+            items: [
+              { text: '文档索引', link: '/development/' },
+              { text: '系统架构', link: '/development/architecture' },
+              { text: '数据库设计', link: '/development/database-design' },
+              { text: 'UI 规范', link: '/development/ui-spec' },
+            ]
           }
         ],
         footer: {

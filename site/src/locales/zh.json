@@ -286,7 +286,7 @@
     "totalProxies": "代理总数",
     "confirmDeletion": "确认删除",
     "deleteConfirmMessage": "您确定要删除此代理吗？此操作无法撤消。",
-    "remotePortOrDomain": "远程端口 / 域名",
+    "remotePortOrDomain": "远程访问",
     "selectServer": "选择服务器",
     "selectServerPlaceholder": "选择一个服务器",
     "noServersAvailable": "没有可用的服务器",

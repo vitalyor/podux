@@ -286,7 +286,7 @@
     "totalProxies": "Total Proxies",
     "confirmDeletion": "Confirm Deletion",
     "deleteConfirmMessage": "Are you sure you want to delete this proxy? This action cannot be undone.",
-    "remotePortOrDomain": "Remote Port / Domain",
+    "remotePortOrDomain": "Remote Access",
     "selectServer": "Select Server",
     "selectServerPlaceholder": "Select a server",
     "noServersAvailable": "No servers available",

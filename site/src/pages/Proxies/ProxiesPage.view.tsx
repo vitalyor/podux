@@ -314,26 +314,38 @@ export function ProxiesView({
                                 </Flex>
                               );
                             }
-                            const displayText = proxy.remotePort ? String(proxy.remotePort) : "";
-                            if (!displayText)
+                            const remotePort = proxy.remotePort ? String(proxy.remotePort) : "";
+                            if (!remotePort)
                               return <Text size="2" color="gray">-</Text>;
-                            const copyKey = `${proxy.id}-port`;
-                            const isCopied = copiedId === copyKey;
+                            const serverAddr =
+                              (proxy as { expand?: { serverId?: { serverAddr?: string } } }).expand?.serverId?.serverAddr || "";
+                            const items = proxy.proxyType === "tcp" || proxy.proxyType === "udp"
+                              ? [remotePort, serverAddr ? `${serverAddr}:${remotePort}` : ""].filter(Boolean)
+                              : [remotePort];
                             return (
-                              <Flex
-                                align="center"
-                                gap="1"
-                                style={{ cursor: "pointer" }}
-                                onClick={() => handleCopy(displayText, copyKey)}
-                                title={isCopied ? t("common.copied") : t("common.clickToCopy")}
-                              >
-                                <Text size="2">{displayText}</Text>
-                                <Icon
-                                  icon={isCopied ? "lucide:check" : "lucide:copy"}
-                                  width="12"
-                                  height="12"
-                                  color={isCopied ? "var(--green-9)" : "var(--gray-8)"}
-                                />
+                              <Flex direction="column" gap="1">
+                                {items.map((item, i) => {
+                                  const copyKey = `${proxy.id}-remote-${i}`;
+                                  const isCopied = copiedId === copyKey;
+                                  return (
+                                    <Flex
+                                      key={item}
+                                      align="center"
+                                      gap="1"
+                                      style={{ cursor: "pointer" }}
+                                      onClick={() => handleCopy(item, copyKey)}
+                                      title={isCopied ? t("common.copied") : t("common.clickToCopy")}
+                                    >
+                                      <Text size="2">{item}</Text>
+                                      <Icon
+                                        icon={isCopied ? "lucide:check" : "lucide:copy"}
+                                        width="12"
+                                        height="12"
+                                        color={isCopied ? "var(--green-9)" : "var(--gray-8)"}
+                                      />
+                                    </Flex>
+                                  );
+                                })}
                               </Flex>
                             );
                           })()}

@@ -1,48 +1,49 @@
-# Podux Agent 开发指南
+# Podux Agent Development Guide
 
-## 项目定位与技术栈
+## Project Scope and Technology Stack
 
-Podux 是集中管理 frpc 服务器配置、代理、连接状态、网络延迟和运行日志的 Web 管理平台。当前代码基线为 Go 1.25.5、PocketBase 0.35.0 和内嵌的 frp 0.68.0；业务前端位于 `site/`，使用 React 19、TypeScript 5.9、Vite 7、Radix Themes 3、Tailwind CSS 4。`docs/` 是 VitePress 1 文档站，其 Vue 依赖不代表业务前端使用 Vue。
+Podux is a web management platform for centrally managing frpc server configurations, proxies, connection status, network latency, and runtime logs. The current codebase uses Go 1.25.5, PocketBase 0.35.0, and embedded frp 0.68.0. The application frontend is under `site/` and uses React 19, TypeScript 5.9, Vite 7, Radix Themes 3, and Tailwind CSS 4. `docs/` is a VitePress 1 documentation site; its Vue dependency does not mean that the application frontend uses Vue.
 
-版本号及依赖以 `go.mod`、`site/package.json` 和 `docs/package.json` 为准，不要从文档示例反推版本。
+Treat `go.mod`, `site/package.json`, and `docs/package.json` as the sources of truth for versions and dependencies. Do not infer versions from documentation examples.
 
-## 目录地图
+## Directory Map
 
-| 路径 | 职责 |
+| Path | Responsibility |
 | --- | --- |
-| `main.go` | PocketBase 启动与依赖装配、hook/自定义路由、监控调度、静态资源服务入口 |
-| `internal/domain/` | server/proxy 领域模型和 repository 接口 |
-| `internal/application/` | dashboard、frpc、importer、monitoring、proxy、server、system、version 等用例服务 |
-| `internal/infrastructure/persistence/` | 基于 PocketBase/dbx 的 repository 实现 |
-| `internal/interfaces/http/` | 自定义 HTTP handler 和鉴权中间件 |
-| `migrations/` | PocketBase collection schema 的唯一版本化事实来源 |
-| `pkg/` | build info、响应、通用类型和工具 |
-| `site/` | React 业务前端；可直接调用 PocketBase collection API，也调用 `/api/*` 自定义接口 |
-| `docs/` | 独立 VitePress 文档站 |
-| `pb_public/` | `site/dist` 的复制目标；由 `main.go` 的 `go:embed` 打入 Go 二进制，不提交 |
-| `pb_data/` | PocketBase SQLite、上传文件及 `frpc/<server-id>` 日志/证书运行数据，不提交 |
-| `build/`、`deploy/` | 多平台构建脚本和 Docker 部署文件 |
+| `main.go` | PocketBase startup and dependency wiring, hooks/custom routes, monitoring scheduler, and static asset serving entry point |
+| `internal/domain/` | Server/proxy domain models and repository interfaces |
+| `internal/application/` | Use-case services for dashboard, frpc, importer, monitoring, proxy, server, system, version, and related features |
+| `internal/infrastructure/persistence/` | Repository implementations based on PocketBase/dbx |
+| `internal/interfaces/http/` | Custom HTTP handlers and authentication middleware |
+| `migrations/` | The sole version-controlled source of truth for PocketBase collection schemas |
+| `pkg/` | Build information, responses, shared types, and utilities |
+| `site/` | React application frontend; calls both the PocketBase collection API and custom `/api/*` endpoints |
+| `docs/` | Independent VitePress documentation site |
+| `development/` | Development design documents for agents and maintainers; not part of the web documentation site |
+| `pb_public/` | Copy destination for `site/dist`; embedded into the Go binary by `main.go` via `go:embed`; not committed |
+| `pb_data/` | PocketBase SQLite data, uploads, and `frpc/<server-id>` runtime logs/certificates; not committed |
+| `build/`, `deploy/` | Multi-platform build scripts and Docker deployment files |
 
-完整设计入口见 [开发设计文档](docs/development/README.md)。
+See the [development design documentation](development/README.md) for the full design index.
 
-## 本地开发与验证
+## Local Development and Verification
 
-前置条件：`go.mod` 所要求的 Go 1.25.5、Node.js 20（CI 基线）和 pnpm 10（CI 基线）。
+Prerequisites: Go 1.25.5 as required by `go.mod`, Node.js 20 (CI baseline), and pnpm 10 (CI baseline).
 
 ```bash
-# 后端（先确保 pb_public/index.html 存在；完整前端构建见下）
+# Backend (ensure pb_public/index.html exists first; see the full frontend build below)
 go run . serve
 
-# 业务前端；Vite 将 /api 代理到 127.0.0.1:8090
+# Application frontend; Vite proxies /api to 127.0.0.1:8090
 pnpm --dir site install --frozen-lockfile
 pnpm --dir site run dev
 
-# 文档站
+# Documentation site
 pnpm --dir docs install --frozen-lockfile
 pnpm --dir docs run docs:dev
 ```
 
-提交前执行：
+Run before submitting:
 
 ```bash
 pnpm --dir site install --frozen-lockfile
@@ -51,7 +52,7 @@ pnpm --dir site run build
 pnpm --dir docs install --frozen-lockfile
 pnpm --dir docs run docs:build
 
-# Go 工具加载 main package 前必须先满足 go:embed
+# go:embed must be satisfied before Go tooling loads the main package
 rm -rf pb_public
 mkdir -p pb_public
 cp -R site/dist/. pb_public/
@@ -60,31 +61,31 @@ go test ./...
 go build ./...
 ```
 
-`build/build.sh` 会构建前端、复制 `site/dist` 到 `pb_public`、执行 `go mod tidy` 并构建平台包；它会改写生成目录和可能调整模块文件，不应作为普通文档或局部改动的首选验证命令。
+`build/build.sh` builds the frontend, copies `site/dist` to `pb_public`, runs `go mod tidy`, and builds platform packages. It rewrites generated directories and may modify module files, so it is not the preferred verification command for documentation-only or narrowly scoped changes.
 
-## 修改约定
+## Change Conventions
 
-- 后端：依赖方向保持 `interfaces -> application -> domain`，基础设施实现 domain repository；在 `main.go` 统一装配。handler 负责传输层校验/响应，业务编排进入 application service。
-- 前端：保持 React + TypeScript；页面沿用 `index.tsx`（状态/编排）、`*.view.tsx`（展示）的现有分工，优先复用 `site/src/components/` 和 Radix Themes。API 请求复用 `site/src/lib/api.ts` 或 `pocketbase.ts`。
-- migration：schema 变更必须新增可审查、可回滚的 `migrations/*.go`，以 migration 为事实来源；不得直接修改运行中 SQLite 或通过管理 UI 攚改生产 schema 来替代 migration。
-- API：自定义路由放在 `internal/interfaces/http/` 并默认使用 `requireAuth`；PocketBase collection rule 也必须同步审查。改变路径、请求/响应、鉴权或 collection 字段时同步更新相关设计文档。
-- 样式：遵循 [UI 规范](docs/development/ui-spec.md)，优先 Radix token、组件 props 和 Tailwind utility；不要新增另一套无依据的品牌 token。
-- 国际化：用户可见文案同时更新 `site/src/locales/zh.json`、`en.json`，通过 `react-i18next` 的 `t()` 使用；避免新增裸字符串。
-- 文档：实现变化触发 [架构](docs/development/architecture.md)、[数据库](docs/development/database-design.md) 或 [UI](docs/development/ui-spec.md) 同步更新；文档事实要链接到仓库路径或注明“待确认”。
+- Backend: preserve the `interfaces -> application -> domain` dependency direction. Infrastructure implements domain repositories, and `main.go` performs central wiring. Handlers own transport-level validation and responses; business orchestration belongs in application services.
+- Frontend: keep React + TypeScript and follow the existing split between `index.tsx` (state/orchestration) and `*.view.tsx` (presentation). Prefer components from `site/src/components/` and Radix Themes. Reuse `site/src/lib/api.ts` or `pocketbase.ts` for API requests.
+- Migrations: schema changes must add a reviewable, reversible `migrations/*.go` migration. Migrations are the source of truth; never replace one by modifying a live SQLite database or production schema through the admin UI.
+- API: place custom routes in `internal/interfaces/http/` and use `requireAuth` by default. Review PocketBase collection rules as well. When paths, request/response contracts, authentication, or collection fields change, update the relevant design documents.
+- Styling: follow the [UI specification](development/ui-spec.md). Prefer Radix tokens, component props, and Tailwind utilities; do not introduce another unsupported set of brand tokens.
+- Internationalization: update both `site/src/locales/zh.json` and `en.json` for user-visible text, and access it through `react-i18next`'s `t()`. Avoid new hard-coded strings.
+- Documentation: implementation changes must update the [architecture](development/architecture.md), [database design](development/database-design.md), or [UI specification](development/ui-spec.md) when applicable. Documentation claims must link to repository paths or be marked "To be confirmed."
 
-## 安全边界
+## Security Boundaries
 
-- 不提交密钥、token、证书、用户数据、`pb_data/`、`pb_public/`、`site/dist/`、`docs/.vitepress/dist/` 或构建包。
-- `fh_servers.auth`、TLS 私钥、用户密码/tokenKey 等为敏感数据；禁止记录原值。涉及 SSE 查询参数 token 时避免日志、复制和外泄。
-- 不用手工数据库操作代替 migration；删除关系当前均未配置级联，删除父记录前必须评估孤儿数据。
-- 不做与任务无关的全仓格式化，不覆盖工作树中已有改动。
-- 接口、鉴权规则或数据结构变更必须同时更新测试/调用方与本目录设计文档。
+- Do not commit secrets, tokens, certificates, user data, `pb_data/`, `pb_public/`, `site/dist/`, `docs/.vitepress/dist/`, or build packages.
+- `fh_servers.auth`, TLS private keys, user passwords, and token keys are sensitive. Never log their original values. Avoid logging, copying, or exposing tokens used in SSE query parameters.
+- Do not substitute manual database operations for migrations. Relations currently have no cascading deletes; assess orphaned-data risks before deleting parent records.
+- Do not perform unrelated repository-wide formatting or overwrite existing worktree changes.
+- Changes to endpoints, authentication rules, or data structures must update tests, callers, and the design documents in this directory.
 
-## 提交前检查清单
+## Pre-Submission Checklist
 
-- [ ] `git diff` 只包含目标范围，未混入运行数据、构建产物或无关格式化。
-- [ ] Go vet/test/build、业务前端 lint/build、文档 build 均执行并如实记录结果。
-- [ ] 新增或修改的 API、collection、关系、rule 已同步数据库/架构文档。
-- [ ] UI 复用了公共组件，双主题、760px 移动布局、中英文和基本键盘操作已检查。
-- [ ] Markdown 相对链接有效，Mermaid 名称与代码一致且可渲染。
-- [ ] 敏感值未进入代码、日志、截图或提交历史。
+- [ ] `git diff` contains only the intended scope, with no runtime data, build artifacts, or unrelated formatting.
+- [ ] Go vet/test/build, frontend lint/build, and documentation build were run and their results reported accurately.
+- [ ] New or changed APIs, collections, relations, and rules are reflected in the database/architecture documentation.
+- [ ] The UI reuses shared components; both themes, the 760px mobile layout, Chinese/English text, and basic keyboard operation were checked.
+- [ ] Relative Markdown links work, and Mermaid names match the code and render correctly.
+- [ ] No sensitive values appear in code, logs, screenshots, or commit history.

@@ -474,17 +474,26 @@ export function ServerDetailPage() {
                               </Flex>
                             );
                           }
-                          const displayText = proxy.remotePort || "-";
-                          if (displayText === "-") return <Text size="2" color="gray">-</Text>;
-                          const copyKey = `${proxy.id}-port`;
-                          const isCopied = copiedId === copyKey;
+                          const remotePort = proxy.remotePort || "";
+                          if (!remotePort) return <Text size="2" color="gray">-</Text>;
+                          const items = proxy.proxyType === "tcp" || proxy.proxyType === "udp"
+                            ? [remotePort, server?.serverAddr ? `${server.serverAddr}:${remotePort}` : ""].filter(Boolean)
+                            : [remotePort];
                           return (
-                            <Flex align="center" gap="1" style={{ cursor: "pointer" }}
-                              onClick={() => handleCopy(displayText, copyKey)}
-                              title={isCopied ? t("common.copied") : t("common.clickToCopy")}>
-                              <Text size="2">{displayText}</Text>
-                              <Icon icon={isCopied ? "lucide:check" : "lucide:copy"} width="12" height="12"
-                                color={isCopied ? "var(--green-9)" : "var(--gray-8)"} />
+                            <Flex direction="column" gap="1">
+                              {items.map((item, i) => {
+                                const copyKey = `${proxy.id}-remote-${i}`;
+                                const isCopied = copiedId === copyKey;
+                                return (
+                                  <Flex key={item} align="center" gap="1" style={{ cursor: "pointer" }}
+                                    onClick={() => handleCopy(item, copyKey)}
+                                    title={isCopied ? t("common.copied") : t("common.clickToCopy")}>
+                                    <Text size="2">{item}</Text>
+                                    <Icon icon={isCopied ? "lucide:check" : "lucide:copy"} width="12" height="12"
+                                      color={isCopied ? "var(--green-9)" : "var(--gray-8)"} />
+                                  </Flex>
+                                );
+                              })}
                             </Flex>
                           );
                         })()}

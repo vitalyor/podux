@@ -30,16 +30,14 @@ services:
     entrypoint: ["/bin/sh", "-ec"]
     command:
       - |
-          config=/app/pb_data/runtime/frpc.json
-          while [ ! -s "$$config" ]; do sleep 1; done
-          if ! frpc verify -c "$$config" >/dev/null 2>&1; then
-            previous=/app/pb_data/runtime/frpc.previous.json
-            frpc verify -c "$$previous" >/dev/null 2>&1 || exit 1
-            cp "$$previous" "$$config.next"
-            mv "$$config.next" "$$config"
+          while [ ! -s /app/pb_data/runtime/frpc.json ]; do sleep 1; done
+          if ! frpc verify -c /app/pb_data/runtime/frpc.json >/dev/null 2>&1; then
+            frpc verify -c /app/pb_data/runtime/frpc.previous.json >/dev/null 2>&1 || exit 1
+            cp /app/pb_data/runtime/frpc.previous.json /app/pb_data/runtime/frpc.json.next
+            mv /app/pb_data/runtime/frpc.json.next /app/pb_data/runtime/frpc.json
             echo "Restored the previous valid FRPC configuration" >&2
           fi
-          exec frpc -c "$$config"
+          exec frpc -c /app/pb_data/runtime/frpc.json
     healthcheck:
       test: [CMD, wget, -q, --spider, "http://127.0.0.1:7400/healthz"]
       interval: 10s

@@ -1,3 +1,4 @@
+import i18n from "../../i18n";
 import { useState, useEffect } from "react";
 import { apiGet } from "../../lib/api";
 
@@ -24,8 +25,8 @@ export function useVersion() {
         }
         const data = await response.json();
         setReleases(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
+      } catch {
+        setError(i18n.t("version.loadFailed"));
       } finally {
         setLoading(false);
       }

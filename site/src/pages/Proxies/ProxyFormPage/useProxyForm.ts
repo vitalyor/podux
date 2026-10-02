@@ -1,3 +1,4 @@
+import i18n from "../../../i18n";
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -70,7 +71,7 @@ export function useProxyForm() {
       try {
         setLoadingServers(true);
         const res = await apiGet("/api/servers/options");
-        if (!res.ok) throw new Error("Failed to fetch servers");
+        if (!res.ok) throw new Error(i18n.t("server.fetchFailed"));
         const list: ServerOption[] = await res.json();
         setServers(list);
         if (list.length > 0 && !isEditing) {
@@ -78,7 +79,7 @@ export function useProxyForm() {
         }
       } catch (err) {
         console.error("Failed to fetch servers:", err);
-        toast.error("Failed to fetch servers");
+        toast.error(i18n.t("server.fetchFailed"));
       } finally {
         setLoadingServers(false);
       }
@@ -111,7 +112,7 @@ export function useProxyForm() {
           pluginPassword: plugin?.password || "",
         });
       } catch {
-        toast.error("Failed to load proxy");
+        toast.error(i18n.t("proxy.loadFailed"));
         navigate("/proxies");
       } finally {
         setLoadingProxy(false);
@@ -216,14 +217,14 @@ export function useProxyForm() {
       setSubmitting(true);
       if (isEditing) {
         await pb.collection("fh_proxies").update(id!, payload);
-        toast.success("Proxy updated successfully");
+        toast.success(i18n.t("proxy.updateSuccess"));
       } else {
         await pb.collection("fh_proxies").create({ bootStatus: "offline", ...payload });
-        toast.success("Proxy created successfully");
+        toast.success(i18n.t("proxy.createSuccess"));
       }
       navigate("/proxies");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to save proxy");
+    } catch {
+      toast.error(i18n.t("proxy.saveFailed"));
     } finally {
       setSubmitting(false);
     }

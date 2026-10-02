@@ -16,8 +16,8 @@ interface SetupViewProps {
   setPassword: (value: string) => void;
   confirmPassword: string;
   setConfirmPassword: (value: string) => void;
-  language: "en" | "zh";
-  handleLanguageChange: (lang: "en" | "zh") => void;
+  language: "en" | "zh" | "ru";
+  handleLanguageChange: (lang: "en" | "zh" | "ru") => void;
   loading: boolean;
   error: string;
   handleSubmit: (e: React.FormEvent) => void;
@@ -145,6 +145,7 @@ export function SetupView({
                 <Select.Root value={language} onValueChange={handleLanguageChange}>
                   <Select.Trigger className="w-full" />
                   <Select.Content>
+                    <Select.Item value="ru">{t("language.ru")}</Select.Item>
                     <Select.Item value="en">
                       <Flex align="center" gap="2">
                         <Icon icon="circle-flags:us" width="16" />

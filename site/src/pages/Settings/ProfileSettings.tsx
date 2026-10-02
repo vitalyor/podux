@@ -1,3 +1,4 @@
+import i18n from "../../i18n";
 import { useState, useRef } from "react";
 import {
   Box,
@@ -84,7 +85,7 @@ export function ProfileSettings() {
       window.location.reload(); // Simple way to refresh state across app
     } catch (error) {
       console.error("Failed to update profile", error);
-      alert("Failed to update profile. Please try again.");
+      alert(i18n.t("settings.profileSaveFailed"));
     } finally {
       setSaving(false);
     }
@@ -126,7 +127,12 @@ export function ProfileSettings() {
             opacity: 0.3,
           }}
         />
-        <Flex align="center" gap="5" style={{ position: "relative" }}>
+        <Flex
+          direction={{ initial: "column", sm: "row" }}
+          align={{ initial: "start", sm: "center" }}
+          gap="4"
+          style={{ position: "relative" }}
+        >
           <Box style={{ position: "relative" }}>
             <Avatar
               size="6"
@@ -180,9 +186,13 @@ export function ProfileSettings() {
               onChange={handleFileChange}
             />
           </Box>
-          <Flex direction="column" gap="2" style={{ flex: 1 }}>
-            <Flex align="center" gap="3">
-              <Heading size="5">{nickname || "User"}</Heading>
+          <Flex
+            direction="column"
+            gap="2"
+            style={{ flex: 1, minWidth: 0, width: "100%", overflowWrap: "anywhere" }}
+          >
+            <Flex align="center" gap="3" wrap="wrap">
+              <Heading size="5">{nickname || t("settings.user")}</Heading>
               <Badge color="green" variant="soft" size="2">
                 <Flex align="center" gap="1">
                   <Box
@@ -213,6 +223,7 @@ export function ProfileSettings() {
         <Flex direction="column" gap="3">
           <FormItem label={t("settings.displayName")} required>
             <TextField.Root
+              aria-label={t("settings.displayName")}
               placeholder={t("settings.enterDisplayName")}
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
@@ -222,6 +233,7 @@ export function ProfileSettings() {
 
           <FormItem label={t("settings.emailAddress")} required>
             <TextField.Root
+              aria-label={t("settings.emailAddress")}
               placeholder={t("settings.emailPlaceholder")}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -252,7 +264,7 @@ export function ProfileSettings() {
               border: "1px solid var(--gray-5)",
             }}
           >
-            <Flex justify="between" align="center">
+            <Flex justify="between" align="center" gap="3" wrap="wrap">
               <Box>
                 <Text size="2" weight="medium" mb="1" style={{ display: "block" }}>
                   {t("settings.password")}
@@ -272,7 +284,7 @@ export function ProfileSettings() {
       <Separator size="4" />
 
       {/* Save Button */}
-      <Flex justify="end" gap="3">
+      <Flex justify="end" gap="3" wrap="wrap">
         <Button variant="soft" color="gray" size="2" onClick={() => window.location.reload()}>
           {t("common.cancel")}
         </Button>

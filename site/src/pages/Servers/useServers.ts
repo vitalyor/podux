@@ -1,3 +1,4 @@
+import i18n from "../../i18n";
 import { useState, useEffect, useCallback, useRef } from "react";
 import pb from "../../lib/pocketbase";
 import { apiGet, apiPost } from "../../lib/api";
@@ -89,7 +90,7 @@ export function useServers() {
         if (search) params.set("search", search);
 
         const res = await apiGet(`/api/servers?${params}`);
-        if (!res.ok) throw new Error("Failed to fetch servers");
+        if (!res.ok) throw new Error(i18n.t("server.fetchFailed"));
         const data = await res.json();
 
         setServers(data.items);
@@ -97,7 +98,7 @@ export function useServers() {
         initializedRef.current = true;
       } catch (err) {
         if ((err as any)?.isAbort) return;
-        toast.error(err instanceof Error ? err.message : "Failed to fetch servers");
+        toast.error(i18n.t("server.fetchFailed"));
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -132,9 +133,9 @@ export function useServers() {
     try {
       await pb.collection("fh_servers").delete(id);
       await fetchServers();
-      toast.success("Server deleted successfully");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete server");
+      toast.success(i18n.t("server.deleteSuccess"));
+    } catch {
+      toast.error(i18n.t("server.deleteFailed"));
     }
   };
 
@@ -143,7 +144,9 @@ export function useServers() {
     const response = await apiPost("/api/frpc/launch", { id });
     if (response.ok) {
       await fetchServers();
-      toast.success("Server launched successfully");
+      toast.success(i18n.t("server.startSuccess"));
+    } else {
+      toast.error(i18n.t("server.startFailed"));
     }
   };
 
@@ -152,7 +155,9 @@ export function useServers() {
     const response = await apiPost("/api/frpc/terminate", { id });
     if (response.ok) {
       await fetchServers();
-      toast.success("Server launched successfully");
+      toast.success(i18n.t("server.stopSuccess"));
+    } else {
+      toast.error(i18n.t("server.stopFailed"));
     }
   };
 

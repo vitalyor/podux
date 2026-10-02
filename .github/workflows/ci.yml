@@ -34,9 +34,12 @@ jobs:
         working-directory: site
 
       - name: Type check
-        run: pnpm run tsc --noEmit 2>/dev/null || pnpm exec tsc --noEmit
+        run: pnpm exec tsc -b
         working-directory: site
-        continue-on-error: true
+
+      - name: Verify translations
+        run: pnpm run test:i18n
+        working-directory: site
 
       - name: Build
         run: pnpm run build
@@ -72,6 +75,9 @@ jobs:
 
       - name: go vet
         run: go vet ./...
+
+      - name: Tests
+        run: go test ./...
 
       - name: Build (linux/amd64)
         env:

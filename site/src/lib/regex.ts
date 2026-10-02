@@ -8,6 +8,6 @@ export const REGEX = {
   PORT: /^([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$/,
   // Proxy name (alphanumeric, hyphens, underscores)
   PROXY_NAME: /^[a-zA-Z0-9_-]+$/,
-  // Server name (alphanumeric, Chinese, spaces, dots, underscores, hyphens)
-  SERVER_NAME: /^[a-zA-Z0-9\u4e00-\u9fa5\s._-]+$/,
+  // Server name (alphanumeric, Chinese, Cyrillic, spaces, dots, underscores, hyphens)
+  SERVER_NAME: /^[a-zA-Z0-9\u4e00-\u9fa5\u0400-\u04ff\s._-]+$/,
 };

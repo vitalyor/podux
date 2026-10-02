@@ -30,7 +30,13 @@
     "discardChangesDesc": "您有未保存的更改。确定要放弃它们吗？",
     "discard": "放弃",
     "keepEditing": "继续编辑",
-    "back": "返回"
+    "back": "返回",
+    "never": "从未",
+    "justNow": "刚刚",
+    "rights": "保留所有权利。",
+    "author": "作者",
+    "milliseconds": "毫秒",
+    "ms": "毫秒"
   },
   "nav": {
     "dashboard": "仪表板",
@@ -55,7 +61,9 @@
     "loginFailed": "登录失败",
     "signInToAccount": "登录到您的 Podux 账户",
     "enterEmail": "输入您的邮箱",
-    "enterPassword": "输入您的密码"
+    "enterPassword": "输入您的密码",
+    "sessionExpired": "User not authenticated",
+    "invalidCredentials": "请检查邮箱和密码"
   },
   "dashboard": {
     "title": "仪表板",
@@ -112,7 +120,7 @@
     "view": "查看",
     "launch": "启动",
     "autoConnection": "自动连接",
-    "autoConnectionDesc": "应用程序启动时自动启动此服务器",
+    "autoConnectionDesc": "启动时若无活动连接则选择此连接",
     "basic": "基础",
     "auth": "认证",
     "log": "日志",
@@ -163,7 +171,7 @@
     "portPlaceholder": "7000",
     "version": "版本",
     "selectVersion": "选择版本",
-    "builtIn": "内置",
+    "builtIn": "外部客户端",
     "authentication": "认证",
     "selectAuthMethod": "选择认证方式",
     "authMethodNone": "无",
@@ -255,7 +263,14 @@
     "latencyMs": "延迟 (ms)",
     "viewLogs": "日志",
     "viewLogsDesc": "实时连接日志流",
-    "backToDetail": "返回详情"
+    "backToDetail": "返回详情",
+    "fetchFailed": "Failed to fetch servers",
+    "deleteFailed": "Failed to delete server",
+    "saveFailed": "Failed to save server",
+    "deleteSuccess": "Server deleted successfully",
+    "updateSuccess": "Server updated successfully",
+    "createSuccess": "Server created successfully",
+    "connectionHelp": "独立 frpc 客户端的连接配置。同一时间只能启用一个配置，切换前请先停止当前配置。"
   },
   "proxy": {
     "title": "代理",
@@ -343,7 +358,19 @@
     "errorInvalidIP": "无效的 IP 或主机名",
     "errorInvalidPort": "无效的端口（1-65535）",
     "errorRequired": "必填",
-    "errorSubdomainRequired": "子域名或自定义域名为必填项"
+    "errorSubdomainRequired": "子域名或自定义域名为必填项",
+    "fetchFailed": "Failed to fetch proxies",
+    "loadFailed": "Failed to load proxy",
+    "saveFailed": "Failed to save proxy",
+    "deleteFailed": "Failed to delete proxy",
+    "toggleFailed": "Failed to update proxy status",
+    "deleteSuccess": "Proxy deleted successfully",
+    "updateSuccess": "Proxy updated successfully",
+    "createSuccess": "Proxy created successfully",
+    "localAddressHelp": "frpc 可访问的服务地址：容器内使用 127.0.0.1，宿主机使用 host.docker.internal，局域网设备使用其 IP。",
+    "localPortHelp": "该设备上应用的端口，例如 HTTP 的 80 或 SSH 的 22。",
+    "enable": "启用",
+    "disable": "停用"
   },
   "settings": {
     "title": "设置",
@@ -396,11 +423,14 @@
     "passwordsDoNotMatch": "新密码不匹配",
     "passwordTooShort": "密码长度至少为 8 个字符",
     "incorrectPassword": "当前密码不正确",
-    "passwordUpdateSuccess": "密码更新成功！请重新登录。"
+    "passwordUpdateSuccess": "密码更新成功！请重新登录。",
+    "profileSaveFailed": "Failed to update profile. Please try again.",
+    "user": "用户"
   },
   "language": {
     "en": "English",
-    "zh": "中文"
+    "zh": "中文",
+    "ru": "Русский"
   },
   "version": {
     "title": "版本",
@@ -410,7 +440,16 @@
     "upToDate": "已是最新版本",
     "updateAvailable": "有可用更新",
     "updateNow": "查看发布",
-    "releaseNotes": "更新内容"
+    "releaseNotes": "更新内容",
+    "frpVersions": "FRP 版本",
+    "releaseDate": "发布日期",
+    "download": "下载",
+    "description": "fatedier/frp 官方版本",
+    "downloadArch": "下载当前架构版本",
+    "notFound": "未找到文件",
+    "viewGithub": "在 GitHub 查看",
+    "noReleases": "没有可用版本",
+    "loadFailed": "无法加载版本列表"
   },
   "import": {
     "title": "导入",
@@ -487,5 +526,41 @@
       "setupFailed": "系统初始化失败。请重试。",
       "settingsCreateFailed": "初始化系统设置失败"
     }
+  },
+  "ux": {
+    "advanced": "高级设置",
+    "connectionIntro": "填写服务器和认证信息，其他设置已提供默认值。",
+    "connectionAdvanced": "认证、TLS 与证书、日志、备注和元数据",
+    "runtimeVersion": "已安装的客户端版本",
+    "connectionHint": "一次只能启动一个连接，保存后可添加隧道。",
+    "authHint": "通常需要令牌，仅当服务器允许时才使用无认证。",
+    "tlsHint": "TLS 可加密连接。验证私有服务器证书时需填写 CA 和服务器名称。双向认证才需要客户端证书和密钥。",
+    "showSecret": "显示令牌",
+    "hideSecret": "隐藏令牌",
+    "tunnelIntro": "选择连接并填写要通过 FRP 转发的本地服务。",
+    "tunnelAdvanced": "数据加密、压缩、插件和备注",
+    "serverPortShort": "服务器端口",
+    "toggleTheme": "切换主题",
+    "onPage": "本页：{{count}}",
+    "noMatches": "未找到匹配项",
+    "noMatchesHint": "请尝试其他名称或地址。",
+    "source": "本地服务",
+    "destination": "FRP 服务器端",
+    "moreActions": "更多操作",
+    "startHere": "先连接服务器",
+    "startHereHint": "然后为服务添加隧道，此处将显示状态和连接示意图。",
+    "viewDetails": "诊断与连接示意图",
+    "diagnosticsHint": "延迟、探测历史和技术详情",
+    "followLogs": "跟随日志",
+    "logsDisconnected": "日志流不可用，请检查连接或刷新页面。",
+    "saveApplyFailed": "设置已保存但无法应用，请检查字段后重试。",
+    "copyFailed": "无法复制地址",
+    "previousPage": "上一页",
+    "nextPage": "下一页",
+    "connectionsListHint": "一次可启动一个 FRP 服务器连接，其隧道由独立客户端运行。",
+    "tlsOn": "TLS 已启用",
+    "tlsOff": "TLS 已禁用",
+    "showPassword": "显示密码",
+    "hidePassword": "隐藏密码"
   }
 }

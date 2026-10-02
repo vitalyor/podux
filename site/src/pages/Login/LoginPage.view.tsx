@@ -44,7 +44,7 @@ export function LoginView({
         </Flex>
 
         {/* <Card size="4" className="w-full max-w-md shadow-lg"> */}
-        <form onSubmit={handleSubmit} style={{ width: "320px" }}>
+        <form onSubmit={handleSubmit} style={{ width: "min(360px, calc(100vw - 40px))" }}>
           <Flex direction="column" gap="3">
             {/* Logo & Title */}
             <Flex direction="column" align="center" gap="2">
@@ -116,6 +116,7 @@ export function LoginView({
                   size="3"
                   placeholder={t("auth.enterEmail")}
                   type="email"
+                  aria-label={t("auth.email")}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -143,6 +144,7 @@ export function LoginView({
                   size="3"
                   placeholder={t("auth.enterPassword")}
                   type={showPassword ? "text" : "password"}
+                  aria-label={t("auth.password")}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -151,19 +153,16 @@ export function LoginView({
                     <Icon icon="lucide:key-round" />
                   </TextField.Slot>
                   <TextField.Slot>
-                    <Icon
-                      icon={showPassword ? "lucide:eye-off" : "lucide:eye"}
-                      style={{ cursor: "pointer" }}
+                    <button
+                      type="button"
+                      className="copy-address"
+                      aria-label={t(showPassword ? "ux.hidePassword" : "ux.showPassword")}
                       onClick={() => setShowPassword(!showPassword)}
-                    />
+                    >
+                      <Icon icon={showPassword ? "lucide:eye-off" : "lucide:eye"} />
+                    </button>
                   </TextField.Slot>
                 </TextField.Root>
-
-                <Flex justify={"end"} className="mt-1">
-                  <Text size="1" color="indigo" className="cursor-pointer hover:underline">
-                    {t("auth.forgotPassword")}
-                  </Text>
-                </Flex>
               </Flex>
             </motion.div>
 

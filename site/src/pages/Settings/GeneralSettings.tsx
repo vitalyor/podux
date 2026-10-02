@@ -102,6 +102,7 @@ export function GeneralSettings() {
           <FormItem label={t("settings.latencyCheckInterval")} required>
             <Flex align="center" gap="2">
               <TextField.Root
+                aria-label={t("settings.latencyCheckInterval")}
                 type="number"
                 min="10"
                 max="300"
@@ -127,6 +128,7 @@ export function GeneralSettings() {
           <FormItem label={t("settings.locationCheckInterval")} required>
             <Flex align="center" gap="2">
               <TextField.Root
+                aria-label={t("settings.locationCheckInterval")}
                 type="number"
                 min="30"
                 max="600"
@@ -154,7 +156,7 @@ export function GeneralSettings() {
       <Separator size="4" />
 
       {/* Save Button */}
-      <Flex justify="end" gap="3">
+      <Flex justify="end" gap="3" wrap="wrap">
         <Button variant="soft" color="gray" size="2" onClick={handleReset} disabled={saving}>
           {t("common.reset")}
         </Button>

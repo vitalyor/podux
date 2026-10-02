@@ -1,3 +1,4 @@
+import i18n from "../../i18n";
 import { useState, useEffect, useCallback, useRef } from "react";
 import pb from "../../lib/pocketbase";
 import { apiPost } from "../../lib/api";
@@ -29,7 +30,7 @@ export function useServerProxies(serverId: string | undefined) {
     } catch (err) {
       if (!mountedRef.current) return;
       if ((err as Record<string, unknown>)?.isAbort) return;
-      toast.error(err instanceof Error ? err.message : "Failed to fetch proxies");
+      toast.error(i18n.t("proxy.fetchFailed"));
     } finally {
       if (!mountedRef.current) return;
       setLoading(false);
@@ -57,11 +58,11 @@ export function useServerProxies(serverId: string | undefined) {
     try {
       await pb.collection("fh_proxies").update(proxy.id, { status: newStatus });
       if (serverId) await apiPost("/api/frpc/reload", { id: serverId });
-    } catch (err) {
+    } catch {
       setProxies((prev) =>
         prev.map((p) => (p.id === proxy.id ? { ...p, status: proxy.status } : p))
       );
-      toast.error(err instanceof Error ? err.message : "Failed to update proxy status");
+      toast.error(i18n.t("proxy.toggleFailed"));
     } finally {
       setTogglingId(null);
     }
@@ -71,10 +72,10 @@ export function useServerProxies(serverId: string | undefined) {
     try {
       await pb.collection("fh_proxies").delete(id);
       setProxies((prev) => prev.filter((p) => p.id !== id));
-      toast.success("Proxy deleted successfully");
+      toast.success(i18n.t("proxy.deleteSuccess"));
       if (serverId) await apiPost("/api/frpc/reload", { id: serverId });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete proxy");
+    } catch {
+      toast.error(i18n.t("proxy.deleteFailed"));
     }
   };
 

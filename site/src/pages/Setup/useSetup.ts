@@ -1,3 +1,4 @@
+import { getInitialLanguage } from "../../lib/language";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -12,8 +13,8 @@ export function useSetup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [language, setLanguage] = useState<"en" | "zh">(
-    (localStorage.getItem("language") as "en" | "zh") || "en"
+  const [language, setLanguage] = useState<"en" | "zh" | "ru">(
+    getInitialLanguage()
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -33,10 +34,10 @@ export function useSetup() {
       });
   }, []);
 
-  const handleLanguageChange = async (lang: "en" | "zh") => {
+  const handleLanguageChange = async (lang: "en" | "zh" | "ru") => {
     setLanguage(lang);
     await i18n.changeLanguage(lang);
-    localStorage.setItem("language", lang);
+    localStorage.setItem("user-language", lang);
   };
 
   const validateForm = () => {
@@ -86,7 +87,7 @@ export function useSetup() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to initialize system");
+        throw new Error(t("setup.error.setupFailed"));
       }
 
       console.log("System initialized:", data);

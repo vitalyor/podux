@@ -1,3 +1,4 @@
+import i18n from "../../../i18n";
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import pb from "../../../lib/pocketbase";
@@ -49,7 +50,7 @@ const defaultData: ServerFormData = {
   description: "",
   autoConnection: false,
   auth: {
-    method: "none",
+    method: "token",
     token: "",
     oidcClientId: "",
     oidcClientSecret: "",
@@ -89,7 +90,9 @@ export function useServerForm() {
   useEffect(() => {
     apiGet("/api/frp/version")
       .then((res) => res.json())
-      .then((data) => { if (data.frp) setFrpVersion(data.frp); })
+      .then((data) => {
+        if (data.frp) setFrpVersion(data.frp);
+      })
       .catch(console.error);
   }, []);
 
@@ -122,7 +125,7 @@ export function useServerForm() {
         });
       })
       .catch(() => {
-        toast.error("Failed to load server");
+        toast.error(i18n.t("server.failedToLoad"));
         navigate("/servers");
       })
       .finally(() => setLoadingServer(false));
@@ -135,15 +138,22 @@ export function useServerForm() {
     setFormData((prev) => ({ ...prev, [field]: value }));
     // Clear error on change, re-validate format
     if (field === "serverName") {
-      const error = value && !REGEX.SERVER_NAME.test(value as string) ? "Invalid server name" : "";
+      const error =
+        value && !REGEX.SERVER_NAME.test(value as string)
+          ? i18n.t("server.errorInvalidServerName")
+          : "";
       setErrors((prev) => ({ ...prev, serverName: error }));
     }
     if (field === "serverAddr") {
-      const error = value && !REGEX.IP_OR_HOSTNAME.test(value as string) ? "Invalid IP or hostname" : "";
+      const error =
+        value && !REGEX.IP_OR_HOSTNAME.test(value as string) ? i18n.t("proxy.errorInvalidIP") : "";
       setErrors((prev) => ({ ...prev, serverAddr: error }));
     }
     if (field === "serverPort") {
-      const error = value && !REGEX.PORT.test((value as number).toString()) ? "Invalid port" : "";
+      const error =
+        value && !REGEX.PORT.test((value as number).toString())
+          ? i18n.t("proxy.errorInvalidPort")
+          : "";
       setErrors((prev) => ({ ...prev, serverPort: error }));
     }
   };
@@ -188,12 +198,17 @@ export function useServerForm() {
 
   const validate = (data: ServerFormData): boolean => {
     const newErrors: Record<string, string> = {};
-    if (!data.serverName) newErrors.serverName = "Required";
-    else if (!REGEX.SERVER_NAME.test(data.serverName)) newErrors.serverName = "Invalid server name";
-    if (!data.serverAddr) newErrors.serverAddr = "Required";
-    else if (!REGEX.IP_OR_HOSTNAME.test(data.serverAddr)) newErrors.serverAddr = "Invalid IP or hostname";
-    if (!data.serverPort) newErrors.serverPort = "Required";
-    else if (!REGEX.PORT.test(data.serverPort.toString())) newErrors.serverPort = "Invalid port";
+    if (!data.serverName) newErrors.serverName = i18n.t("proxy.errorRequired");
+    else if (!REGEX.SERVER_NAME.test(data.serverName))
+      newErrors.serverName = i18n.t("server.errorInvalidServerName");
+    if (!data.serverAddr) newErrors.serverAddr = i18n.t("proxy.errorRequired");
+    else if (!REGEX.IP_OR_HOSTNAME.test(data.serverAddr))
+      newErrors.serverAddr = i18n.t("proxy.errorInvalidIP");
+    if (!data.serverPort) newErrors.serverPort = i18n.t("proxy.errorRequired");
+    else if (!REGEX.PORT.test(data.serverPort.toString()))
+      newErrors.serverPort = i18n.t("proxy.errorInvalidPort");
+    if (data.auth.method === "token" && !data.auth.token.trim())
+      newErrors.token = i18n.t("proxy.errorRequired");
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -206,14 +221,14 @@ export function useServerForm() {
       const payload = { ...formData, serverPort: Number(formData.serverPort) };
       if (isEditing) {
         await pb.collection("fh_servers").update(id!, payload);
-        toast.success("Server updated successfully");
+        toast.success(i18n.t("server.updateSuccess"));
       } else {
         await pb.collection("fh_servers").create({ ...payload, bootStatus: "stopped" });
-        toast.success("Server created successfully");
+        toast.success(i18n.t("server.createSuccess"));
       }
       navigate("/servers");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to save server");
+    } catch {
+      toast.error(i18n.t("server.saveFailed"));
     } finally {
       setSubmitting(false);
     }

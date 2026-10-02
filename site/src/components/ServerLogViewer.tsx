@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Box, Button, Flex, Heading, Text } from "@radix-ui/themes";
+import { Box, Button, Flex, Heading, Text, Switch } from "@radix-ui/themes";
 import { Icon } from "@iconify/react";
 import { useTranslation } from "react-i18next";
 import pb from "../lib/pocketbase";
@@ -12,9 +12,15 @@ interface ServerLogViewerProps {
   showHeading?: boolean;
 }
 
-export function ServerLogViewer({ serverId, height = 300, showHeading = true }: ServerLogViewerProps) {
+export function ServerLogViewer({
+  serverId,
+  height = 300,
+  showHeading = true,
+}: ServerLogViewerProps) {
   const { t } = useTranslation();
   const [logs, setLogs] = useState<string[]>([]);
+  const [follow, setFollow] = useState(true);
+  const [disconnected, setDisconnected] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // SSE log streaming
@@ -31,6 +37,7 @@ export function ServerLogViewer({ serverId, height = 300, showHeading = true }: 
     };
 
     es.onerror = () => {
+      setDisconnected(true);
       es.close();
     };
 
@@ -41,13 +48,26 @@ export function ServerLogViewer({ serverId, height = 300, showHeading = true }: 
 
   // Auto-scroll to bottom on new logs
   useEffect(() => {
-    if (containerRef.current) {
+    if (follow && containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
-  }, [logs]);
+  }, [logs, follow]);
 
   return (
     <Flex direction="column" gap="3">
+      <Flex justify="between" align="center" gap="3" wrap="wrap">
+        <Text as="label" size="2">
+          <Flex gap="2" align="center">
+            <Switch checked={follow} onCheckedChange={setFollow} aria-label={t("ux.followLogs")} />
+            {t("ux.followLogs")}
+          </Flex>
+        </Text>
+        {disconnected && (
+          <Text size="1" color="gray">
+            {t("ux.logsDisconnected")}
+          </Text>
+        )}
+      </Flex>
       {showHeading && (
         <Flex justify="between" align="center">
           <Heading size="4">{t("server.connectionLogs")}</Heading>
@@ -77,6 +97,8 @@ export function ServerLogViewer({ serverId, height = 300, showHeading = true }: 
           fontSize: "0.9rem",
           height,
           overflowY: "auto",
+          overflowX: "auto",
+          minHeight: 180,
         }}
       >
         {logs.length > 0 ? (

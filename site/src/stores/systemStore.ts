@@ -4,7 +4,7 @@ import { apiGet } from "../lib/api";
 
 interface SystemSettings {
   initialized: boolean;
-  defaultLanguage: "en" | "zh";
+  defaultLanguage: "en" | "zh" | "ru";
 }
 
 interface SystemStore {

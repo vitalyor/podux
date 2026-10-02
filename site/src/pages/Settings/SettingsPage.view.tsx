@@ -1,5 +1,4 @@
 import { Box, Card, Flex, Text } from "@radix-ui/themes";
-import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
@@ -12,18 +11,9 @@ import "./SettingsPage.css";
 export function SettingsView() {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const tabParam = searchParams.get("tab");
-  const [activeTab, setActiveTab] = useState(tabParam || "general");
-
-  useEffect(() => {
-    const tab = searchParams.get("tab");
-    if (tab && tab !== activeTab) {
-      setActiveTab(tab);
-    }
-  }, [searchParams]);
+  const activeTab = searchParams.get("tab") === "profile" ? "profile" : "general";
 
   const handleTabChange = (tab: string) => {
-    setActiveTab(tab);
     setSearchParams({ tab });
   };
 
@@ -43,6 +33,7 @@ export function SettingsView() {
               <Flex direction="column" gap="2" className="settings-nav">
                 <button
                   className="nav-item"
+                  aria-pressed={activeTab === "general"}
                   data-state={activeTab === "general" ? "active" : "inactive"}
                   onClick={() => handleTabChange("general")}
                 >
@@ -55,6 +46,7 @@ export function SettingsView() {
                 </button>
                 <button
                   className="nav-item"
+                  aria-pressed={activeTab === "profile"}
                   data-state={activeTab === "profile" ? "active" : "inactive"}
                   onClick={() => handleTabChange("profile")}
                 >

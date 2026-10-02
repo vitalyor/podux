@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"fmt"
 	"github.com/spf13/cobra"
 	"io/fs"
 	"log"
@@ -62,16 +63,61 @@ func main() {
 	importHandler := httphandler.NewImportHandler(app, importService)
 	serverHandler := httphandler.NewServerHandler(app, metricsService)
 
-	// Hook: Reload frpc when proxy is updated
+	// Apply proxy CRUD from every caller, including PocketBase and import.
+	reloadProxy := func(e *core.RecordEvent) error {
+		serverID := e.Record.GetString("serverId")
+		if serverID != "" && frpcService.IsServerRunning(serverID) {
+			if err := frpcService.ReloadFrpc(&serverID); err != nil {
+				app.Logger().Error("External frpc apply failed", "serverId", serverID, "error", err)
+				return err
+			}
+		}
+		return e.Next()
+	}
+	app.OnRecordAfterCreateSuccess("fh_proxies").BindFunc(reloadProxy)
+	app.OnRecordAfterDeleteSuccess("fh_proxies").BindFunc(reloadProxy)
 	app.OnRecordAfterUpdateSuccess("fh_proxies").BindFunc(func(e *core.RecordEvent) error {
-		serverId := e.Record.GetString("serverId")
-		if serverId != "" {
-			// Check if the server is currently running
-			if frpcService.IsServerRunning(serverId) {
-				app.Logger().Info("Proxy updated, reloading frpc configuration", "proxyId", e.Record.Id, "serverId", serverId)
-				if err := frpcService.ReloadFrpc(&serverId); err != nil {
-					app.Logger().Error("Failed to reload frpc after proxy update", "error", err, "serverId", serverId)
+		changed := false
+		for _, key := range []string{"serverId", "name", "proxyType", "localIP", "localPort", "remotePort", "customDomains", "subdomain", "transport", "plugin", "status"} {
+			if fmt.Sprint(e.Record.Get(key)) != fmt.Sprint(e.Record.Original().Get(key)) {
+				changed = true
+				break
+			}
+		}
+		if changed {
+			oldID := e.Record.Original().GetString("serverId")
+			if oldID != e.Record.GetString("serverId") && frpcService.IsServerRunning(oldID) {
+				if err := frpcService.ReloadFrpc(&oldID); err != nil {
+					app.Logger().Error("External frpc previous profile apply failed", "error", err)
+					return err
 				}
+			}
+			return reloadProxy(e)
+		}
+		return e.Next()
+	})
+	app.OnRecordAfterUpdateSuccess("fh_servers").BindFunc(func(e *core.RecordEvent) error {
+		id := e.Record.Id
+		changed := false
+		for _, key := range []string{"serverAddr", "serverPort", "user", "auth", "transport", "log", "metadatas"} {
+			if fmt.Sprint(e.Record.Get(key)) != fmt.Sprint(e.Record.Original().Get(key)) {
+				changed = true
+				break
+			}
+		}
+		if changed && frpcService.IsServerRunning(id) {
+			if err := frpcService.ReloadFrpc(&id); err != nil {
+				app.Logger().Error("External frpc connection apply failed", "error", err)
+				return err
+			}
+		}
+		return e.Next()
+	})
+	app.OnRecordDelete("fh_servers").BindFunc(func(e *core.RecordEvent) error {
+		id := e.Record.Id
+		if frpcService.IsServerRunning(id) {
+			if err := frpcService.TerminateFrpc(&id); err != nil {
+				return err
 			}
 		}
 		return e.Next()

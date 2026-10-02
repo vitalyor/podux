@@ -1,53 +1,23 @@
-import { motion, AnimatePresence } from "framer-motion";
-import { Icon } from "@iconify/react";
+import { Select } from "@radix-ui/themes";
 import { useLanguage } from "../contexts/LanguageContext";
-
+import { useTranslation } from "react-i18next";
+import { type Language } from "../lib/language";
 interface LanguageToggleProps {
-  language?: "en" | "zh";
-  onChange?: (lang: "en" | "zh") => void;
+  language?: Language;
+  onChange?: (lang: Language) => void;
 }
-
 export function LanguageToggle({ language: customLanguage, onChange }: LanguageToggleProps = {}) {
   const context = useLanguage();
-
-  // Use custom language/onChange if provided, otherwise use context
-  const language = customLanguage ?? context.language;
-  const setLanguage = onChange ?? context.setLanguage;
-
-  const toggleLanguage = () => {
-    const newLang = language === "en" ? "zh" : "en";
-    setLanguage(newLang);
-  };
-
+  const { t } = useTranslation();
   return (
-    <motion.div
-      className="cursor-pointer rounded-lg p-2 transition-colors hover:bg-[var(--gray-a3)]"
-      onClick={toggleLanguage}
-      whileTap={{ scale: 0.95 }}
-      whileHover="hover"
-    >
-      <motion.div
-        variants={{
-          hover: { scale: 1.1, rotate: 15 },
-        }}
-        className="flex items-center justify-center"
-      >
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={language}
-            initial={{ rotate: -90, scale: 0 }}
-            animate={{ rotate: 0, scale: 1 }}
-            exit={{ rotate: 90, scale: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <Icon
-              icon={language === "en" ? "circle-flags:us" : "circle-flags:cn"}
-              width="20"
-              height="20"
-            />
-          </motion.div>
-        </AnimatePresence>
-      </motion.div>
-    </motion.div>
+    <Select.Root value={customLanguage ?? context.language}
+      onValueChange={(value) => (onChange ?? context.setLanguage)(value as Language)}>
+      <Select.Trigger aria-label={t("settings.interfaceLanguage")} />
+      <Select.Content>
+        <Select.Item value="ru">Русский</Select.Item>
+        <Select.Item value="en">English</Select.Item>
+        <Select.Item value="zh">中文</Select.Item>
+      </Select.Content>
+    </Select.Root>
   );
 }

@@ -65,3 +65,62 @@ Hard-coded values such as `#22c55e`, `#E5484D`, `#30A46C`, and `#6b7280` remain 
 - Error state, ErrorBoundary, and form-error presentation do not yet follow a unified shared pattern.
 - ProfileSettings uses native `alert`, Loading defaults to English `Loading...`, and internationalization remains inconsistent.
 - Actual interaction animations do not yet systematically honor `prefers-reduced-motion`.
+
+
+## Russian interface
+
+The application supports `en`, `zh`, and `ru`. Russian browser locales (including
+`ru-RU`) select Russian automatically unless a user preference is stored. Language
+choices use a three-option selector rather than cycling between two flags.
+The setup API accepts Russian; the document language follows the selection.
+
+Russian terminology is task-oriented: **Подключения** means client connections to
+FRP servers, not administration of frps; **Туннели** means proxy configurations.
+Local service addresses and ports on the FRP server are labeled separately.
+Protocol identifiers and TOML examples remain unchanged. Human-readable
+connection names accept Cyrillic; technical proxy names retain FRP-compatible
+Latin letters, digits, hyphens, and underscores. Relative dates use
+`Intl.RelativeTimeFormat` so Russian plural forms are correct.
+
+`site/src/locales/ru.json` contains the Russian strings; all locales include keys
+for notifications previously hardcoded in English. Raw FRP runtime logs and
+third-party PocketBase administration pages are not translated.
+
+## Compact workspace interface
+
+The local external-client fork uses a shared compact layout across the overview,
+connection/tunnel forms, resource lists, details, logs, imports, versions and
+settings. Basic connection inputs are name, server address/port, client name,
+token and automatic selection. New profiles default to token authentication;
+existing authentication and transport values are preserved. The installed FRPC
+version is informational. TLS remains enabled by default and its current state
+is visible beside the runtime version.
+
+`components/AdvancedSettings.tsx` uses native `details/summary`, keeping optional
+controls mounted when collapsed. TLS certificates, authentication mode, logs,
+notes and metadata remain editable. Tunnel forms retain protocol/address/port
+controls, show a route preview, and move transport options/plugins/notes into
+the expandable group. Unsupported new proxy/plugin choices are hidden.
+
+Lists show a compact toolbar and five columns on desktop; under 760px they use
+cards. Local IP and port are shown together. `CopyAddress` supplies a keyboard
+accessible copy control; `ListPagination` labels its previous/next buttons.
+Connection/tunnel activation stays directly available and secondary list actions
+use menus. Initial loading and no search matches are distinct from empty data.
+
+The overview prioritizes active connections and tunnels; first-use guidance
+replaces empty charts. Connection details show tunnels first and diagnostics
+inside an expandable group. Log following can be paused without stopping the
+stream. Settings navigation becomes horizontal on mobile; profile summaries and
+save controls wrap at 320px. Navigation marks parent sections on nested routes,
+controls have accessible names, section headings use h2, and status animations
+respect reduced motion. Literal translation keys, including conditional choices,
+are checked with the existing TypeScript parser in `scripts/check-locales.mjs`.
+
+Verified on a separate local Compose test fixture: GUI creation of a working TCP
+HTTP tunnel; saving and preserving profile description/log retention/TLS while
+its advanced group is collapsed; desktop and 320/390px views; both themes;
+connection/tunnel lists, forms, detail, log and settings routes. Production nodes
+were not modified.
+
+Dashboard uptime is a muted clock-and-text footer below diagnostics, separated by a subtle rule. It does not share the action row or use a badge background (`site/src/pages/Dashboard/DashboardPage.view.tsx`).

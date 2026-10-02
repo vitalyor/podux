@@ -1,3 +1,4 @@
+import i18n from "../../i18n";
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import pb from "../../lib/pocketbase";
@@ -24,7 +25,7 @@ export function useLogin() {
       navigate(from, { replace: true });
     } catch (err: any) {
       console.error("Login error:", err);
-      setError(err?.message || "Invalid email or password");
+      setError(i18n.t(err?.status === 400 ? "auth.invalidCredentials" : "auth.loginFailed"));
     } finally {
       setLoading(false);
     }

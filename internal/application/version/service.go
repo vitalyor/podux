@@ -1,7 +1,7 @@
 package version
 
 import (
-	"runtime/debug"
+	"os"
 
 	"github.com/pocketbase/pocketbase/core"
 )
@@ -15,16 +15,8 @@ func NewService(app core.App) *Service {
 }
 
 func (s *Service) GetFrpVersion() string {
-	info, ok := debug.ReadBuildInfo()
-	if !ok {
-		return "unknown"
+	if version := os.Getenv("FRPC_VERSION"); version != "" {
+		return version
 	}
-
-	for _, dep := range info.Deps {
-		if dep.Path == "github.com/fatedier/frp" {
-			return dep.Version
-		}
-	}
-
-	return "unknown"
+	return "external"
 }

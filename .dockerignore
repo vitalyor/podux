@@ -57,3 +57,6 @@ temp/
 
 # Test
 *_test.go
+
+# Never send local API credentials to the Docker builder
+deploy/.env.external.local

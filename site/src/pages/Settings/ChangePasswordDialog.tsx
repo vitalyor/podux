@@ -1,3 +1,4 @@
+import i18n from "../../i18n";
 import { useState } from "react";
 import { Dialog, Button, Flex, TextField, Callout } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "framer-motion";
@@ -45,7 +46,7 @@ export function ChangePasswordDialog({
 
     setLoading(true);
     try {
-      if (!pb.authStore.record) throw new Error("User not authenticated");
+      if (!pb.authStore.record) throw new Error(i18n.t("auth.sessionExpired"));
 
       const userEmail = pb.authStore.record.email;
       const collectionName = pb.authStore.record.collectionName || "fh_users";
@@ -141,7 +142,7 @@ export function ChangePasswordDialog({
           </AnimatePresence>
 
           <FormItem label={t("settings.currentPassword")} required>
-            <TextField.Root
+            <TextField.Root aria-label={t("settings.currentPassword")}
               type={showOldPassword ? "text" : "password"}
               placeholder={t("settings.enterCurrentPassword")}
               value={oldPassword}
@@ -158,7 +159,7 @@ export function ChangePasswordDialog({
           </FormItem>
 
           <FormItem label={t("settings.newPassword")} required>
-            <TextField.Root
+            <TextField.Root aria-label={t("settings.newPassword")}
               type={showNewPassword ? "text" : "password"}
               placeholder={t("settings.enterNewPassword")}
               value={newPassword}
@@ -175,7 +176,7 @@ export function ChangePasswordDialog({
           </FormItem>
 
           <FormItem label={t("settings.confirmNewPassword")} required>
-            <TextField.Root
+            <TextField.Root aria-label={t("settings.confirmNewPassword")}
               type={showConfirmPassword ? "text" : "password"}
               placeholder={t("settings.confirmNewPasswordPlaceholder")}
               value={confirmPassword}

@@ -1,7 +1,12 @@
 name: podux-local
 services:
   podux:
-    image: ghcr.io/vitalyor/podux:${PODUX_VERSION:-0.2.0}
+    image: podux-local:external
+    build:
+      context: ..
+      args:
+        VERSION: 0.1.6-external
+    container_name: podux-local
     restart: unless-stopped
     ports:
       - "127.0.0.1:17402:8090"
@@ -21,7 +26,14 @@ services:
       driver: json-file
       options: {max-size: "5m", max-file: "3"}
   frpc:
-    image: ghcr.io/vitalyor/podux-frpc:${FRPC_IMAGE_VERSION:-0.71.0-podux.0.2.0}
+    image: podux-frpc:${FRP_VERSION:-0.71.0}
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.frpc
+      args:
+        FRP_VERSION: ${FRP_VERSION:-0.71.0}
+        FRP_SHA256: ${FRP_SHA256:-}
+    container_name: podux-frpc
     restart: unless-stopped
     env_file: .env.external.local
     volumes:

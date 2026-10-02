@@ -2,19 +2,15 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-type Language = "en" | "zh";
+import { getBrowserLanguage, isLanguage, type Language } from "../lib/language";
 
 const USER_LANG_KEY = "user-language";
 
-function getBrowserLanguage(): Language {
-  const lang = navigator.language || "en";
-  return lang.startsWith("zh") ? "zh" : "en";
-}
 
 function readUserLanguage(): Language | null {
   try {
     const val = localStorage.getItem(USER_LANG_KEY);
-    if (val === "en" || val === "zh") return val;
+    if (isLanguage(val)) return val;
   } catch {}
   return null;
 }
@@ -47,6 +43,7 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   useEffect(() => {
     i18n.changeLanguage(language);
+    document.documentElement.lang = language;
   }, [language, i18n]);
 
   const setLanguage = useCallback(

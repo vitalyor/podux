@@ -90,20 +90,20 @@ function StepIndicator({ current }: { current: number }) {
 // Step 1: Input TOML
 // ────────────────────────────────────────────────────────────
 function Step1({
-                 tomlContent,
-                 setTomlContent,
-                 parseError,
-                 parsing,
-                 handleFileUpload,
-                 handleParse,
-               }: Pick<
+  tomlContent,
+  setTomlContent,
+  parseError,
+  parsing,
+  handleFileUpload,
+  handleParse,
+}: Pick<
   ImportViewProps,
   "tomlContent" | "setTomlContent" | "parseError" | "parsing" | "handleFileUpload" | "handleParse"
 >) {
   const { t } = useTranslation();
   return (
     <Flex direction="column" gap="4">
-      <Flex justify="between" align="center">
+      <Flex justify="between" align="center" gap="3" wrap="wrap">
         <Text size="3" weight="bold">
           {t("import.inputTomlTitle")}
         </Text>
@@ -131,12 +131,13 @@ function Step1({
       </Text>
 
       <TextArea
+        aria-label={t("import.inputTomlTitle")}
         size="2"
         placeholder={t("import.tomlPlaceholder")}
         value={tomlContent}
         onChange={(e) => setTomlContent(e.target.value)}
         style={{
-          minHeight: 320,
+          minHeight: 220,
           fontFamily: "monospace",
           fontSize: 13,
         }}
@@ -169,21 +170,21 @@ function Step1({
 // Step 2: Preview
 // ────────────────────────────────────────────────────────────
 function Step2({
-                 preview,
-                 serverName,
-                 setServerName,
-                 importServer,
-                 setImportServer,
-                 overwriteServer,
-                 setOverwriteServer,
-                 proxySelections,
-                 updateProxySelection,
-                 selectAllProxies,
-                 selectedProxiesCount,
-                 importing,
-                 handleExecute,
-                 goBack,
-               }: Pick<
+  preview,
+  serverName,
+  setServerName,
+  importServer,
+  setImportServer,
+  overwriteServer,
+  setOverwriteServer,
+  proxySelections,
+  updateProxySelection,
+  selectAllProxies,
+  selectedProxiesCount,
+  importing,
+  handleExecute,
+  goBack,
+}: Pick<
   ImportViewProps,
   | "preview"
   | "serverName"
@@ -344,7 +345,7 @@ function Step2({
                         {tls?.enable ? t("server.enabled") : t("server.disabled")}
                       </Badge>
                     </Box>
-                    {(tls?.enable && tls?.serverName) ? (
+                    {tls?.enable && tls?.serverName ? (
                       <Box style={{ flex: 1 }}>
                         <Text size="1" color="gray" mb="1" as="div">
                           {t("server.serverNameSNI")}
@@ -353,7 +354,9 @@ function Step2({
                           {tls.serverName as string}
                         </Text>
                       </Box>
-                    ) : (<div></div>)}
+                    ) : (
+                      <div></div>
+                    )}
                   </Flex>
                 </Flex>
               </Tabs.Content>
@@ -596,7 +599,7 @@ function Step3({ result, handleReset }: Pick<ImportViewProps, "result" | "handle
 
       <Card style={{ width: "100%", maxWidth: 400 }}>
         <Flex direction="column" gap="3">
-          <Flex justify="between" align="center">
+          <Flex justify="between" align="center" gap="3" wrap="wrap">
             <Flex align="center" gap="2">
               <Icon icon="lucide:server" width="16" height="16" color="var(--gray-9)" />
               <Text size="2">{t("import.serverResult")}</Text>
@@ -606,7 +609,7 @@ function Step3({ result, handleReset }: Pick<ImportViewProps, "result" | "handle
             </Badge>
           </Flex>
           <Separator size="4" />
-          <Flex justify="between" align="center">
+          <Flex justify="between" align="center" gap="3" wrap="wrap">
             <Flex align="center" gap="2">
               <Icon icon="lucide:network" width="16" height="16" color="var(--gray-9)" />
               <Text size="2">{t("import.proxiesImported")}</Text>
@@ -615,7 +618,7 @@ function Step3({ result, handleReset }: Pick<ImportViewProps, "result" | "handle
               {result.proxiesImported}
             </Badge>
           </Flex>
-          <Flex justify="between" align="center">
+          <Flex justify="between" align="center" gap="3" wrap="wrap">
             <Flex align="center" gap="2">
               <Icon icon="lucide:skip-forward" width="16" height="16" color="var(--gray-9)" />
               <Text size="2">{t("import.proxiesSkipped")}</Text>
@@ -656,7 +659,7 @@ export function ImportPageView(props: ImportViewProps) {
   const { step, visible } = props;
 
   return (
-    <Flex direction="column" gap="5" className="flex flex-1 flex-col">
+    <Flex className="form-page" direction="column" gap="5">
       <PageHeader
         title={t("import.title")}
         description={t("import.description")}

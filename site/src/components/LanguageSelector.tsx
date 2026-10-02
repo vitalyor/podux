@@ -7,9 +7,10 @@ export default function LanguageSelector() {
   const { language, setLanguage } = useLanguage();
 
   return (
-    <Select.Root value={language} onValueChange={(value) => setLanguage(value as "en" | "zh")}>
+    <Select.Root value={language} onValueChange={(value) => setLanguage(value as "en" | "zh" | "ru")}>
       <Select.Trigger />
       <Select.Content>
+        <Select.Item value="ru">{t("language.ru")}</Select.Item>
         <Select.Item value="en">{t("language.en")}</Select.Item>
         <Select.Item value="zh">{t("language.zh")}</Select.Item>
       </Select.Content>

@@ -1,15 +1,6 @@
-import {
-  Box,
-  Card,
-  Flex,
-  Heading,
-  Text,
-  Badge,
-  Button,
-  Spinner,
-  Callout,
-  Table,
-} from "@radix-ui/themes";
+import { useTranslation } from "react-i18next";
+import { Card, Flex, Text, Badge, Button, Spinner, Callout, Table } from "@radix-ui/themes";
+import { PageHeader } from "../../components/PageHeader";
 // import { MainLayout } from "../../layouts/MainLayout";
 import type { GithubRelease } from "./useVersion";
 
@@ -20,18 +11,15 @@ interface VersionViewProps {
 }
 
 export function VersionView({ releases, loading, error }: VersionViewProps) {
+  const { t, i18n } = useTranslation();
   return (
     <>
       <Flex direction="column" gap="5">
-        <Flex justify="between" align="center">
-          <Box>
-            <Heading size="6">FRP Versions</Heading>
-            <Text color="gray" size="2">
-              Available releases from fatedier/frp
-            </Text>
-          </Box>
-          {loading && <Spinner />}
-        </Flex>
+        <PageHeader
+          title={t("version.frpVersions")}
+          description={t("version.description")}
+          extra={loading ? <Spinner /> : undefined}
+        />
 
         {error && (
           <Callout.Root color="red">
@@ -40,13 +28,13 @@ export function VersionView({ releases, loading, error }: VersionViewProps) {
         )}
 
         {!loading && !error && releases.length > 0 && (
-          <Card>
+          <Card style={{ overflowX: "auto" }}>
             <Table.Root>
               <Table.Header>
                 <Table.Row>
-                  <Table.ColumnHeaderCell>Version</Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell>Release Date</Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell>Download</Table.ColumnHeaderCell>
+                  <Table.ColumnHeaderCell>{t("nav.version")}</Table.ColumnHeaderCell>
+                  <Table.ColumnHeaderCell>{t("version.releaseDate")}</Table.ColumnHeaderCell>
+                  <Table.ColumnHeaderCell>{t("version.download")}</Table.ColumnHeaderCell>
                   <Table.ColumnHeaderCell>Github</Table.ColumnHeaderCell>
                 </Table.Row>
               </Table.Header>
@@ -59,7 +47,9 @@ export function VersionView({ releases, loading, error }: VersionViewProps) {
                       </Badge>
                     </Table.Cell>
                     <Table.Cell>
-                      <Text size="2">{new Date(release.published_at).toLocaleDateString()}</Text>
+                      <Text size="2">
+                        {new Date(release.published_at).toLocaleDateString(i18n.language)}
+                      </Text>
                     </Table.Cell>
                     <Table.Cell>
                       {release.download_url ? (
@@ -80,11 +70,11 @@ export function VersionView({ releases, loading, error }: VersionViewProps) {
                             <polyline points="7 10 12 15 17 10" />
                             <line x1="12" y1="15" x2="12" y2="3" />
                           </svg>
-                          Download for Current Arch
+                          {t("version.downloadArch")}
                         </Button>
                       ) : (
                         <Text size="1" color="gray">
-                          Not found
+                          {t("version.notFound")}
                         </Text>
                       )}
                     </Table.Cell>
@@ -94,7 +84,7 @@ export function VersionView({ releases, loading, error }: VersionViewProps) {
                         size="1"
                         onClick={() => window.open(release.html_url)}
                       >
-                        View on Github
+                        {t("version.viewGithub")}
                       </Button>
                     </Table.Cell>
                   </Table.Row>
@@ -106,7 +96,7 @@ export function VersionView({ releases, loading, error }: VersionViewProps) {
 
         {!loading && !error && releases.length === 0 && (
           <Text align="center" color="gray">
-            No releases found.
+            {t("version.noReleases")}
           </Text>
         )}
       </Flex>

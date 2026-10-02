@@ -30,7 +30,13 @@
     "discardChangesDesc": "You have unsaved changes. Are you sure you want to discard them?",
     "discard": "Discard",
     "keepEditing": "Keep Editing",
-    "back": "Back"
+    "back": "Back",
+    "never": "Never",
+    "justNow": "Just now",
+    "rights": "All rights reserved.",
+    "author": "Author",
+    "milliseconds": "ms",
+    "ms": "ms"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -55,7 +61,9 @@
     "loginFailed": "Login failed",
     "signInToAccount": "Sign in to your Podux account",
     "enterEmail": "Enter your email",
-    "enterPassword": "Enter your password"
+    "enterPassword": "Enter your password",
+    "sessionExpired": "User not authenticated",
+    "invalidCredentials": "Check your email and password"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -112,7 +120,7 @@
     "view": "View",
     "launch": "Launch",
     "autoConnection": "Auto Connection",
-    "autoConnectionDesc": "Automatically start this server when the application launches",
+    "autoConnectionDesc": "Select this connection on startup when no other connection is active",
     "basic": "Basic",
     "auth": "Authentication",
     "log": "Log",
@@ -163,7 +171,7 @@
     "portPlaceholder": "7000",
     "version": "Version",
     "selectVersion": "Select version",
-    "builtIn": "Built-in",
+    "builtIn": "External client",
     "authentication": "Authentication",
     "selectAuthMethod": "Select authentication method",
     "authMethodNone": "None",
@@ -255,7 +263,14 @@
     "latencyMs": "Latency (ms)",
     "viewLogs": "Logs",
     "viewLogsDesc": "Real-time connection log stream",
-    "backToDetail": "Back to Details"
+    "backToDetail": "Back to Details",
+    "fetchFailed": "Failed to fetch servers",
+    "deleteFailed": "Failed to delete server",
+    "saveFailed": "Failed to save server",
+    "deleteSuccess": "Server deleted successfully",
+    "updateSuccess": "Server updated successfully",
+    "createSuccess": "Server created successfully",
+    "connectionHelp": "Connection profile for the external frpc client. Only one profile can be active; stop it before switching."
   },
   "proxy": {
     "title": "Proxies",
@@ -343,7 +358,19 @@
     "errorInvalidIP": "Invalid IP or hostname",
     "errorInvalidPort": "Invalid port (1-65535)",
     "errorRequired": "Required",
-    "errorSubdomainRequired": "Subdomain or custom domains required"
+    "errorSubdomainRequired": "Subdomain or custom domains required",
+    "fetchFailed": "Failed to fetch proxies",
+    "loadFailed": "Failed to load proxy",
+    "saveFailed": "Failed to save proxy",
+    "deleteFailed": "Failed to delete proxy",
+    "toggleFailed": "Failed to update proxy status",
+    "deleteSuccess": "Proxy deleted successfully",
+    "updateSuccess": "Proxy updated successfully",
+    "createSuccess": "Proxy created successfully",
+    "localAddressHelp": "Service address reachable by frpc: 127.0.0.1 inside this container, host.docker.internal on the Docker host, or a LAN device IP.",
+    "localPortHelp": "Application port on that device, such as 80 for HTTP or 22 for SSH.",
+    "enable": "Enable",
+    "disable": "Disable"
   },
   "settings": {
     "title": "Settings",
@@ -396,11 +423,14 @@
     "passwordsDoNotMatch": "New passwords do not match",
     "passwordTooShort": "Password must be at least 8 characters long",
     "incorrectPassword": "Current password is incorrect",
-    "passwordUpdateSuccess": "Password updated successfully! Please sign in again."
+    "passwordUpdateSuccess": "Password updated successfully! Please sign in again.",
+    "profileSaveFailed": "Failed to update profile. Please try again.",
+    "user": "User"
   },
   "language": {
     "en": "English",
-    "zh": "中文"
+    "zh": "中文",
+    "ru": "Русский"
   },
   "version": {
     "title": "Version",
@@ -410,7 +440,16 @@
     "upToDate": "You are up to date",
     "updateAvailable": "Update Available",
     "updateNow": "View Release",
-    "releaseNotes": "Release Notes"
+    "releaseNotes": "Release Notes",
+    "frpVersions": "FRP Versions",
+    "releaseDate": "Release Date",
+    "download": "Download",
+    "description": "Official releases from fatedier/frp",
+    "downloadArch": "Download for this architecture",
+    "notFound": "File not found",
+    "viewGithub": "View on GitHub",
+    "noReleases": "No releases found",
+    "loadFailed": "Failed to load releases"
   },
   "import": {
     "title": "Import",
@@ -487,5 +526,41 @@
       "setupFailed": "Failed to initialize system. Please try again.",
       "settingsCreateFailed": "Failed to initialize system settings"
     }
+  },
+  "ux": {
+    "advanced": "Advanced settings",
+    "connectionIntro": "Enter the server and credentials. The remaining settings have sensible defaults.",
+    "connectionAdvanced": "Authentication, TLS and certificates, logs, notes and metadata",
+    "runtimeVersion": "Installed client version",
+    "connectionHint": "One connection can run at a time. Add tunnels after saving.",
+    "authHint": "A token is usually required. Use no authentication only when the server permits it.",
+    "tlsHint": "TLS encrypts the connection. Add the CA and server name to verify a private server certificate. Client certificate and key are only needed for mutual verification.",
+    "showSecret": "Show token",
+    "hideSecret": "Hide token",
+    "tunnelIntro": "Choose a connection and the local service to forward through FRP.",
+    "tunnelAdvanced": "Data encryption, compression, plugins and notes",
+    "serverPortShort": "Server port",
+    "toggleTheme": "Switch theme",
+    "onPage": "On this page: {{count}}",
+    "noMatches": "No matches",
+    "noMatchesHint": "Try another name or address.",
+    "source": "Local service",
+    "destination": "On the FRP server",
+    "moreActions": "More actions",
+    "startHere": "Start with a server connection",
+    "startHereHint": "Then add a tunnel for your service. Its status and connection diagram will appear here.",
+    "viewDetails": "Diagnostics and topology",
+    "diagnosticsHint": "Latency, probe history and technical details",
+    "followLogs": "Follow logs",
+    "logsDisconnected": "Log stream is unavailable. Check the connection or refresh the page.",
+    "saveApplyFailed": "Settings were saved but could not be applied. Check the fields and try again.",
+    "copyFailed": "Could not copy the address",
+    "previousPage": "Previous page",
+    "nextPage": "Next page",
+    "connectionsListHint": "One active FRP server connection. Its tunnels run through the external client.",
+    "tlsOn": "TLS enabled",
+    "tlsOff": "TLS disabled",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
   }
 }

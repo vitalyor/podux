@@ -1,3 +1,4 @@
+import i18n from "../../i18n";
 import { useState, useEffect, useCallback, useRef } from "react";
 import pb from "../../lib/pocketbase";
 import { apiPost } from "../../lib/api";
@@ -14,6 +15,8 @@ export interface Proxy {
   subdomain?: string;
   customDomains?: string[];
   transport?: Record<string, boolean>;
+  plugin?: { type?: string };
+  expand?: { serverId?: { serverName?: string } };
   description?: string;
   status: "enabled" | "disabled";
   bootStatus: "online" | "offline";
@@ -74,7 +77,7 @@ export function useProxies() {
         initializedRef.current = true;
       } catch (err) {
         if ((err as Record<string, unknown>)?.isAbort) return;
-        toast.error(err instanceof Error ? err.message : "Failed to fetch proxies");
+        toast.error(i18n.t("proxy.fetchFailed"));
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -99,13 +102,13 @@ export function useProxies() {
     try {
       await pb.collection("fh_proxies").delete(id);
       await fetchProxies();
-      toast.success("Proxy deleted successfully");
+      toast.success(i18n.t("proxy.deleteSuccess"));
       // Reload frp config if we know which server this proxy belonged to
       if (proxy?.serverId) {
         await apiPost("/api/frpc/reload", { id: proxy.serverId });
       }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete proxy");
+    } catch {
+      toast.error(i18n.t("proxy.deleteFailed"));
     }
   };
 
@@ -119,12 +122,12 @@ export function useProxies() {
       await pb.collection("fh_proxies").update(proxy.id, { status: newStatus });
       // Reload frp config so the change takes effect immediately
       await apiPost("/api/frpc/reload", { id: proxy.serverId });
-    } catch (err) {
+    } catch {
       // Rollback on failure
       setProxies((prev) =>
         prev.map((p) => (p.id === proxy.id ? { ...p, status: proxy.status } : p))
       );
-      toast.error(err instanceof Error ? err.message : "Failed to update proxy status");
+      toast.error(i18n.t("proxy.toggleFailed"));
     }
   };
 

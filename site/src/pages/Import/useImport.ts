@@ -88,7 +88,7 @@ export function useImport() {
       const res = await apiPost("/api/import/preview", { tomlContent });
       const data = await res.json();
       if (!res.ok) {
-        setParseError(data.error || t("import.errorParseFailed"));
+        setParseError(t("import.errorParseFailed"));
         return;
       }
       setPreview(data as ImportPreview);
@@ -135,7 +135,7 @@ export function useImport() {
       });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error || t("import.errorImportFailed"));
+        toast.error(t("import.errorImportFailed"));
         return;
       }
       setResult(data.result as ImportResult);

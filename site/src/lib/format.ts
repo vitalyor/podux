@@ -1,3 +1,4 @@
+import i18n from "../i18n";
 export const formatBytes = (bytes: number): { value: number; unit: string } => {
   if (bytes === 0) return { value: 0, unit: "B" };
   const k = 1024;
@@ -7,33 +8,16 @@ export const formatBytes = (bytes: number): { value: number; unit: string } => {
   return { value: bytes / Math.pow(k, i), unit: sizes[i] };
 };
 
-/**
- * Format a timestamp into a human-readable "time ago" string
- * @param timestamp - ISO date string or Date object
- * @returns Formatted string like "5 minutes ago", "2 days ago", etc.
- */
+/** Relative time uses the selected locale, including Russian plural forms. */
 export const getTimeAgo = (timestamp: string | Date | null | undefined): string => {
-  if (!timestamp) return "Never";
-
-  const date = new Date(timestamp);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-
-  // Handle future dates
-  if (diffMs < 0) return "Just now";
-
-  const diffMinutes = Math.floor(diffMs / (1000 * 60));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffMinutes < 1) return "Just now";
-  if (diffMinutes < 60) return `${diffMinutes} minute${diffMinutes > 1 ? "s" : ""} ago`;
-  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
-  if (diffDays < 30) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
-  if (diffDays < 365) {
-    const months = Math.floor(diffDays / 30);
-    return `${months} month${months > 1 ? "s" : ""} ago`;
-  }
-  const years = Math.floor(diffDays / 365);
-  return `${years} year${years > 1 ? "s" : ""} ago`;
+  if (!timestamp) return i18n.t("common.never");
+  const elapsed = Math.max(0, Date.now() - new Date(timestamp).getTime());
+  if (!Number.isFinite(elapsed) || elapsed < 60_000) return i18n.t("common.justNow");
+  const units: [Intl.RelativeTimeFormatUnit, number][] = [
+    ["year", 365 * 86400], ["month", 30 * 86400], ["day", 86400],
+    ["hour", 3600], ["minute", 60],
+  ];
+  const [unit, seconds] = units.find(([, duration]) => elapsed >= duration * 1000)!;
+  return new Intl.RelativeTimeFormat(i18n.language, { numeric: "always" })
+    .format(-Math.floor(elapsed / (seconds * 1000)), unit);
 };

@@ -77,11 +77,13 @@ type Palette = typeof LIGHT;
 // Shared
 function StatusPill({
   online,
-  labels = ["Online", "Offline"],
+  labels,
 }: {
   online: boolean;
   labels?: [string, string];
 }) {
+  const { t } = useTranslation();
+  const statusLabels = labels ?? [t("proxy.online"), t("proxy.offline")];
   const color = online ? C.online : C.offline;
   return (
     <span
@@ -99,7 +101,7 @@ function StatusPill({
       }}
     >
       <span style={{ width: 5, height: 5, borderRadius: "50%", background: color }} />
-      {online ? labels[0] : labels[1]}
+      {online ? statusLabels[0] : statusLabels[1]}
     </span>
   );
 }
@@ -211,6 +213,7 @@ function VisitorNode({ data }: { data: Record<string, string> }) {
 
 // Server Node
 function ServerNode({ data }: { data: Record<string, string> }) {
+  const { t } = useTranslation();
   const p = data.isDark === "1" ? DARK : LIGHT;
   const online = data.bootStatus === "running";
   const accent = online ? C.online : C.eOff;
@@ -253,7 +256,7 @@ function ServerNode({ data }: { data: Record<string, string> }) {
       >
         {data.serverAddr}
       </span>
-      <StatusPill online={online} labels={["Running", "Stopped"]} />
+      <StatusPill online={online} labels={[t("server.running"), t("server.stopped")]} />
     </NodeCard>
   );
 }

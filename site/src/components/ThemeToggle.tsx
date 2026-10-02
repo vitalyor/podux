@@ -1,39 +1,20 @@
-import { motion, AnimatePresence } from "framer-motion";
 import { Icon } from "@iconify/react";
+import { IconButton } from "@radix-ui/themes";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "../contexts/ThemeContext";
-
 export function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
-
+  const { t } = useTranslation();
   return (
-    <motion.div
-      className="cursor-pointer rounded-lg p-2 transition-colors hover:bg-[var(--gray-a3)]"
+    <IconButton
+      size="2"
+      variant="ghost"
+      color="gray"
       onClick={toggleTheme}
-      whileTap={{ scale: 0.95 }}
-      whileHover="hover"
+      aria-label={t("ux.toggleTheme")}
+      title={t("ux.toggleTheme")}
     >
-      <motion.div
-        variants={{
-          hover: { scale: 1.1, rotate: 15 },
-        }}
-        className="flex items-center justify-center"
-      >
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={theme}
-            initial={{ rotate: -90, scale: 0 }}
-            animate={{ rotate: 0, scale: 1 }}
-            exit={{ rotate: 90, scale: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            {theme === "light" ? (
-              <Icon icon="lucide:sun" width="20" height="20" color="#f59e0b" />
-            ) : (
-              <Icon icon="lucide:moon" width="20" height="20" />
-            )}
-          </motion.div>
-        </AnimatePresence>
-      </motion.div>
-    </motion.div>
+      <Icon icon={theme === "light" ? "lucide:sun" : "lucide:moon"} width="18" />
+    </IconButton>
   );
 }

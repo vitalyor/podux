@@ -25,9 +25,9 @@ export function ServerLogPage() {
         description={t("server.viewLogsDesc")}
         visible={mounted}
         extra={
-          <Button variant="soft" onClick={() => navigate("/servers")}>
+          <Button variant="soft" onClick={() => navigate(`/servers/${id}`)}>
             <Icon icon="lucide:arrow-left" width="16" height="16" />
-            {t("server.backToServers")}
+            {t("server.view")}
           </Button>
         }
       />

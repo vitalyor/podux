@@ -204,7 +204,7 @@ func (s *Service) InitializeSystem(req *InitializeRequest) error {
 		return errors.New("email and password are required")
 	}
 
-	if req.Language != "en" && req.Language != "zh" {
+	if req.Language != "en" && req.Language != "zh" && req.Language != "ru" {
 		req.Language = "en"
 	}
 

@@ -9,45 +9,15 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"regexp"
-	"sync"
-	"syscall"
 	"time"
 
-	proxydomain "podux/internal/domain/proxy"
-	serverdomain "podux/internal/domain/server"
-	"podux/pkg/utils"
-
-	"github.com/fatedier/frp/client"
-	frpcsource "github.com/fatedier/frp/pkg/config/source"
 	v1 "github.com/fatedier/frp/pkg/config/v1"
-	"github.com/fatedier/frp/pkg/util/log"
-	"github.com/pocketbase/pocketbase/core"
+	"podux/pkg/utils"
 )
 
 var validServerID = regexp.MustCompile(`^[a-z0-9]{15}$`)
-var sensitiveRegex = regexp.MustCompile(`"(?i)(token|password|sk|pwd|secretkey|httpuser|httppwd|oidctoken|oidcclientsecret)":"(?:[^"\\]|\\.)*"`)
-
-type Service struct {
-	mu             sync.RWMutex
-	app            core.App
-	processes      map[string]*client.Service
-	statusMonitors map[string]context.CancelFunc
-	serverRepo     serverdomain.Repository
-	proxyRepo      proxydomain.Repository
-}
-
-func NewService(app core.App, serverRepo serverdomain.Repository, proxyRepo proxydomain.Repository) *Service {
-	return &Service{
-		app:            app,
-		processes:      make(map[string]*client.Service),
-		statusMonitors: make(map[string]context.CancelFunc),
-		serverRepo:     serverRepo,
-		proxyRepo:      proxyRepo,
-	}
-}
 
 func (fs *Service) genCommonCfgs(id *string) (*v1.ClientCommonConfig, error) {
 	if !validServerID.MatchString(*id) {
@@ -80,6 +50,9 @@ func (fs *Service) genCommonCfgs(id *string) (*v1.ClientCommonConfig, error) {
 	logPath := filepath.Join(mainPath, "logs", "frpc.log")
 	logConfig.To = logPath
 	cfg.Log = logConfig
+	if err := os.MkdirAll(filepath.Dir(logPath), 0700); err != nil {
+		return nil, err
+	}
 
 	// auth config
 	authStr := record.GetString("auth")
@@ -100,7 +73,7 @@ func (fs *Service) genCommonCfgs(id *string) (*v1.ClientCommonConfig, error) {
 		return nil, err
 	}
 	cfg.Transport = transportConfig
-	if *cfg.Transport.TLS.Enable {
+	if cfg.Transport.TLS.Enable == nil || *cfg.Transport.TLS.Enable {
 		certsDir := filepath.Join(mainPath, "certs")
 		hasCert := cfg.Transport.TLS.CertFile != "" && cfg.Transport.TLS.KeyFile != ""
 		hasCa := cfg.Transport.TLS.TrustedCaFile != ""
@@ -211,205 +184,12 @@ func (fs *Service) genProxyCfgs(serverId *string) ([]v1.ProxyConfigurer, error) 
 				return nil, err
 			}
 			proxyCfgs = append(proxyCfgs, &httpsProxy)
+		default:
+			return nil, fmt.Errorf("unsupported proxy type: %s", proxyMap.ProxyType)
 		}
 	}
 
 	return proxyCfgs, nil
-}
-
-func handleTermSignal(svr *client.Service) {
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
-	<-ch
-	svr.GracefulClose(500 * time.Millisecond)
-}
-
-func (fs *Service) LaunchFrpc(serverId *string) error {
-	fs.app.Logger().Info("Launch frpc", "id", *serverId)
-	cfg, err := fs.genCommonCfgs(serverId)
-	if err != nil {
-		return err
-	}
-
-	proxyCfgs, err := fs.genProxyCfgs(serverId)
-	if err != nil {
-		return err
-	}
-
-	fs.app.Logger().Debug("Config", "serverAddr", cfg.ServerAddr, "serverPort", cfg.ServerPort, "proxyCount", len(proxyCfgs))
-
-	// Print frp configurations in logs with sensitive data masked
-	commonCfgBytes, _ := json.Marshal(cfg)
-	proxyCfgsBytes, _ := json.Marshal(proxyCfgs)
-
-	safeCommon := sensitiveRegex.ReplaceAll(commonCfgBytes, []byte(`"${1}":"***"`))
-	safeProxies := sensitiveRegex.ReplaceAll(proxyCfgsBytes, []byte(`"${1}":"***"`))
-
-	fs.app.Logger().Info("FRP Configuration", "common", string(safeCommon), "proxies", string(safeProxies))
-
-	cfg.Complete()
-	log.InitLogger(cfg.Log.To, cfg.Log.Level, int(cfg.Log.MaxDays), cfg.Log.DisablePrintColor)
-
-	configSrc := frpcsource.NewConfigSource()
-	if err := configSrc.ReplaceAll(proxyCfgs, nil); err != nil {
-		return err
-	}
-	svr, err := client.NewService(client.ServiceOptions{
-		Common:                 cfg,
-		ConfigSourceAggregator: frpcsource.NewAggregator(configSrc),
-	})
-	if err != nil {
-		fs.app.Logger().Error("NewService", "err", err)
-		return err
-	}
-	shouldGracefulClose := cfg.Transport.Protocol == "kcp" || cfg.Transport.Protocol == "quic"
-	if shouldGracefulClose {
-		go handleTermSignal(svr)
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	fs.mu.Lock()
-	fs.processes[*serverId] = svr
-	fs.statusMonitors[*serverId] = cancel
-	fs.mu.Unlock()
-
-	fs.serverRepo.UpdateBootStatus(*serverId, serverdomain.ServerStatusRunning)
-
-	done := make(chan error, 1)
-
-	go func() {
-		fs.app.Logger().Info("Frpc service starting execution", "id", *serverId)
-		err := svr.Run(ctx)
-		if err != nil {
-			fs.app.Logger().Error("Frpc service exited with error", "id", *serverId, "error", err)
-		} else {
-			fs.app.Logger().Info("Frpc service exited normally", "id", *serverId)
-		}
-		done <- err
-	}()
-
-	go fs.monitorServiceStatus(serverId, svr, ctx, done)
-
-	return nil
-}
-
-// monitorServiceStatus monitors service status and updates the database.
-func (fs *Service) monitorServiceStatus(id *string, svr *client.Service, ctx context.Context, done <-chan error) {
-	time.Sleep(2 * time.Second)
-
-	select {
-	case err := <-done:
-		fs.app.Logger().Error("Service exited during startup", "id", *id, "error", err)
-		fs.destroying(id)
-		return
-	case <-ctx.Done():
-		fs.app.Logger().Info("Service context cancelled during startup", "id", *id)
-		fs.destroying(id)
-		return
-	default:
-		fs.serverRepo.UpdateBootStatus(*id, serverdomain.ServerStatusRunning)
-		fs.app.Logger().Info("Service is running", "id", *id)
-	}
-
-	go fs.monitorProxyStatus(id, svr, ctx)
-
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case err := <-done:
-			if err != nil {
-				fs.app.Logger().Error("Service exited with error", "id", *id, "error", err)
-			} else {
-				fs.app.Logger().Info("Service exited normally", "id", *id)
-			}
-			fs.destroying(id)
-			return
-		case <-ctx.Done():
-			fs.app.Logger().Info("Service stopped by user", "id", *id)
-			fs.destroying(id)
-			return
-		case <-ticker.C:
-			fs.app.Logger().Debug("Service status check", "id", *id, "status", "running")
-		}
-	}
-}
-
-func (fs *Service) destroying(id *string) {
-	fs.serverRepo.UpdateBootStatus(*id, serverdomain.ServerStatusStopped)
-	fs.proxyRepo.UpdateBootStatusByServerID(*id, proxydomain.ProxyBootStatusOffline)
-	fs.mu.Lock()
-	delete(fs.processes, *id)
-	delete(fs.statusMonitors, *id)
-	fs.mu.Unlock()
-}
-
-// monitorProxyStatus monitors proxy status from frp and updates the database.
-func (fs *Service) monitorProxyStatus(serverId *string, svr *client.Service, ctx context.Context) {
-	fs.app.Logger().Info("Starting proxy status monitoring", "serverId", *serverId)
-
-	statusExporter := svr.StatusExporter()
-
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			fs.app.Logger().Info("Proxy status monitoring stopped", "serverId", *serverId)
-			return
-		case <-ticker.C:
-			proxies, err := fs.proxyRepo.FindByServerID(*serverId)
-			if err != nil {
-				fs.app.Logger().Error("Failed to get proxies", "serverId", *serverId, "error", err)
-				continue
-			}
-
-			for _, proxy := range proxies {
-				baseName := proxy.Name + "-" + proxy.Id
-				status, exists := statusExporter.GetProxyStatus(baseName)
-				fs.app.Logger().Info("proxy status check", "baseName", baseName, "exists", exists, "phase", func() string {
-					if status != nil {
-						return status.Phase
-					}
-					return "nil"
-				}())
-
-				if exists {
-					var bootStatus proxydomain.ProxyBootStatus
-					switch status.Phase {
-					case "running":
-						bootStatus = proxydomain.ProxyBootStatusOnline
-					case "start error", "check failed", "closed":
-						bootStatus = proxydomain.ProxyBootStatusOffline
-					default:
-						bootStatus = proxydomain.ProxyBootStatusOffline
-					}
-					fs.proxyRepo.UpdateBootStatus(proxy.Id, bootStatus)
-				} else {
-					// Proxy is not in frp (disabled or removed) — mark as offline
-					fs.proxyRepo.UpdateBootStatus(proxy.Id, proxydomain.ProxyBootStatusOffline)
-				}
-			}
-		}
-	}
-}
-
-// TerminateFrpc stops the specified frpc service.
-func (fs *Service) TerminateFrpc(id *string) error {
-	fs.app.Logger().Info("Stop frpc", "id", *id)
-
-	fs.mu.RLock()
-	cancel, exists := fs.statusMonitors[*id]
-	fs.mu.RUnlock()
-	if !exists {
-		return nil
-	}
-
-	cancel()
-
-	fs.app.Logger().Info("Frpc stop signal sent", "id", *id)
-	return nil
 }
 
 func (fs *Service) getFrpMainPath(id *string) string {
@@ -488,70 +268,4 @@ func (fs *Service) StreamLog(serverId string, ctx context.Context, w http.Respon
 			}
 		}
 	}
-}
-
-func (fs *Service) ReloadFrpc(serverId *string) error {
-	fs.app.Logger().Info("Reload frpc", "id", *serverId)
-
-	proxyCfgs, err := fs.genProxyCfgs(serverId)
-	if err != nil {
-		return err
-	}
-
-	proxyCfgsBytes, _ := json.Marshal(proxyCfgs)
-	safeProxies := sensitiveRegex.ReplaceAll(proxyCfgsBytes, []byte(`"${1}":"***"`))
-	fs.app.Logger().Info("FRP Reload Configurations", "proxies", string(safeProxies))
-
-	fs.mu.RLock()
-	svr := fs.processes[*serverId]
-	fs.mu.RUnlock()
-	// TODO 2026-02-08 reload visitorCfgs
-	svr.UpdateAllConfigurer(proxyCfgs, nil)
-
-	return nil
-}
-
-// IsServerRunning checks if a server is currently running.
-func (fs *Service) IsServerRunning(serverId string) bool {
-	fs.mu.RLock()
-	_, exists := fs.processes[serverId]
-	fs.mu.RUnlock()
-	return exists
-}
-
-// AutoStartServers automatically starts all servers with autoConnection=true.
-func (fs *Service) AutoStartServers() {
-	fs.app.Logger().Info("Auto-starting servers with autoConnection enabled")
-	fs.app.Logger().Info("Waiting for 10 seconds before auto-starting servers")
-	time.Sleep(10 * time.Second)
-
-	records, err := fs.serverRepo.FindAllWithAutoConnect()
-	if err != nil {
-		fs.app.Logger().Error("Failed to find auto-connection servers", "error", err)
-		return
-	}
-
-	count := 0
-	for _, record := range records {
-		serverId := record.ID
-		serverName := record.ServerName
-
-		fs.app.Logger().Info("Auto-starting server", "id", serverId, "name", serverName)
-
-		go func(id string) {
-			time.Sleep(time.Duration(count) * 500 * time.Millisecond)
-
-			if err := fs.LaunchFrpc(&id); err != nil {
-				fs.app.Logger().Error("Failed to auto-start server", "id", id, "error", err)
-			} else {
-				fs.app.Logger().Info("Successfully auto-started server", "id", id)
-			}
-		}(serverId)
-
-		count++
-		fs.app.Logger().Info("Waiting for 1s before auto-starting next server")
-		time.Sleep(1 * time.Second)
-	}
-
-	fs.app.Logger().Info("Auto-start initiated for servers", "count", count)
 }

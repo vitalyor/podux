@@ -30,7 +30,7 @@ export function StatCard({
           align="center"
           justify="center"
           style={{
-            backgroundColor: `${colorMap[color]}20`,
+            backgroundColor: `var(--${color}-a3)`,
             color: colorMap[color],
           }}
         >
@@ -41,7 +41,7 @@ export function StatCard({
             {title}
           </Text>
           <Box>
-            <Text size="6" weight="bold">
+            <Text size="5" weight="bold">
               {value}
             </Text>
           </Box>

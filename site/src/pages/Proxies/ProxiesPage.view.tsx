@@ -1,14 +1,25 @@
-import { Icon } from "@iconify/react";
-import { Badge, Button, Card, Flex, Table, Text, TextField, AlertDialog } from "@radix-ui/themes";
-import { useState, useEffect } from "react";
+import {
+  Badge,
+  Button,
+  Card,
+  Flex,
+  Table,
+  Text,
+  TextField,
+  AlertDialog,
+  DropdownMenu,
+  IconButton,
+  Spinner,
+} from "@radix-ui/themes";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { EmptyState } from "../../components/EmptyState";
-import { type Proxy } from "./useProxies";
-import { PageHeader } from "../../components/PageHeader";
-import { StatCard } from "../../components/StatCard";
+import { Icon } from "@iconify/react";
 import { useTranslation } from "react-i18next";
-
+import { PageHeader } from "../../components/PageHeader";
+import { EmptyState } from "../../components/EmptyState";
+import { CopyAddress } from "../../components/CopyAddress";
+import { ListPagination } from "../../components/ListPagination";
+import type { Proxy } from "./useProxies";
 interface ProxiesViewProps {
   proxies: Proxy[];
   loading: boolean;
@@ -30,7 +41,7 @@ interface ProxiesViewProps {
 
 export function ProxiesView({
   proxies,
-  loading: _loading,
+  loading,
   refreshing,
   stats,
   onDeleteProxy,
@@ -45,472 +56,271 @@ export function ProxiesView({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [mounted, setMounted] = useState(false);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [togglingId, setTogglingId] = useState<string | null>(null);
-
-  const handleCopy = (text: string, id: string) => {
-    const done = () => {
-      setCopiedId(id);
-      setTimeout(() => setCopiedId(null), 1500);
-    };
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(text).then(done);
-    } else {
-      const el = document.createElement("textarea");
-      el.value = text;
-      el.style.position = "fixed";
-      el.style.opacity = "0";
-      document.body.appendChild(el);
-      el.select();
-      document.execCommand("copy");
-      document.body.removeChild(el);
-      done();
-    }
-  };
-
-  useEffect(() => {
-    const timer = setTimeout(() => setMounted(true), 100);
-    return () => clearTimeout(timer);
-  }, []);
-
+  const [busy, setBusy] = useState<string | null>(null);
+  const target = (proxy: Proxy) =>
+    ["http", "https"].includes(proxy.proxyType)
+      ? proxy.customDomains?.filter(Boolean).join(", ") || proxy.subdomain || "—"
+      : String(proxy.remotePort || "—");
+  const status = (proxy: Proxy) => (
+    <Badge
+      variant="soft"
+      color={
+        proxy.status === "disabled" ? "gray" : proxy.bootStatus === "online" ? "green" : "gray"
+      }
+    >
+      {t(
+        proxy.status === "disabled"
+          ? "proxy.disabled"
+          : proxy.bootStatus === "online"
+            ? "proxy.online"
+            : "proxy.offline"
+      )}
+    </Badge>
+  );
+  const actions = (proxy: Proxy) => (
+    <Flex gap="2" align="center">
+      <Button
+        size="1"
+        variant="soft"
+        color={proxy.status === "enabled" ? "gray" : undefined}
+        disabled={busy !== null}
+        onClick={async () => {
+          setBusy(proxy.id);
+          try {
+            await onToggleStatus(proxy);
+          } finally {
+            setBusy(null);
+          }
+        }}
+      >
+        {busy === proxy.id ? (
+          <Spinner size="1" />
+        ) : (
+          <Icon icon={proxy.status === "enabled" ? "lucide:pause" : "lucide:play"} />
+        )}
+        {t(proxy.status === "enabled" ? "proxy.disable" : "proxy.enable")}
+      </Button>
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger>
+          <IconButton
+            size="1"
+            variant="ghost"
+            color="gray"
+            aria-label={`${t("ux.moreActions")}: ${proxy.name}`}
+          >
+            <Icon icon="lucide:ellipsis" />
+          </IconButton>
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Content>
+          <DropdownMenu.Item onClick={() => navigate(`/proxies/${proxy.id}/edit`)}>
+            {t("common.edit")}
+          </DropdownMenu.Item>
+          <DropdownMenu.Item onClick={() => navigate(`/servers/${proxy.serverId}`)}>
+            {t("server.view")}
+          </DropdownMenu.Item>
+          <DropdownMenu.Separator />
+          <DropdownMenu.Item color="red" onClick={() => setDeleteId(proxy.id)}>
+            {t("common.delete")}
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Root>
+    </Flex>
+  );
   return (
-    <>
-      <Flex direction="column" gap="5" className="flex flex-1 flex-col">
-        {/* Header */}
-        <PageHeader
-          title={t("proxy.title")}
-          description={t("proxy.manageProxies")}
-          visible={mounted}
-        />
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={mounted ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-            transition={{ duration: 0.5, delay: 0.1, ease: "easeOut" }}
+    <Flex direction="column" gap="5">
+      <PageHeader
+        title={t("proxy.title")}
+        description={t("proxy.manageProxies")}
+        extra={
+          <>
+            <Button variant="soft" color="gray" onClick={() => navigate("/import")}>
+              <Icon icon="lucide:file-input" />
+              {t("nav.import")}
+            </Button>
+            <Button onClick={() => navigate("/proxies/new")}>
+              <Icon icon="lucide:plus" />
+              {t("proxy.addProxy")}
+            </Button>
+          </>
+        }
+      />
+      <Card size="3">
+        <div className="resource-toolbar">
+          <TextField.Root
+            aria-label={t("proxy.searchProxies")}
+            placeholder={t("proxy.searchProxies")}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           >
-            <StatCard
-              title={t("proxy.totalProxies")}
-              value={stats.total}
+            <TextField.Slot>
+              <Icon icon="lucide:search" />
+            </TextField.Slot>
+            {search && (
+              <TextField.Slot>
+                <IconButton
+                  size="1"
+                  variant="ghost"
+                  aria-label={t("server.clearSearch")}
+                  onClick={() => setSearch("")}
+                >
+                  <Icon icon="lucide:x" />
+                </IconButton>
+              </TextField.Slot>
+            )}
+          </TextField.Root>
+          <Flex gap="3" align="center">
+            <Badge color="green" variant="soft">
+              {t("proxy.online")}: {stats.online}
+            </Badge>
+            <Text size="2" color="gray">
+              {t("proxy.totalProxies")}: {stats.total}
+            </Text>
+            <IconButton
+              variant="soft"
               color="gray"
-              icon={<Icon icon="lucide:network" width="32" height="32" color="var(--gray-11)" />}
-            />
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={mounted ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-            transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}
-          >
-            <StatCard
-              title={t("proxy.online")}
-              value={<span className="text-[#30A46C]">{stats.online}</span>}
-              color="green"
-              icon={
-                <Icon icon="lucide:check-circle" width="32" height="32" color="var(--green-11)" />
-              }
-            />
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={mounted ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-            transition={{ duration: 0.5, delay: 0.3, ease: "easeOut" }}
-          >
-            <StatCard
-              title={t("proxy.offline")}
-              value={<span className="text-[#E5484D]">{stats.offline}</span>}
-              color="red"
-              icon={<Icon icon="lucide:x-circle" width="32" height="32" color="var(--red-11)" />}
-            />
-          </motion.div>
+              aria-label={t("proxy.refresh")}
+              title={t("proxy.refresh")}
+              disabled={refreshing}
+              onClick={refreshProxies}
+            >
+              <Icon icon="lucide:refresh-cw" className={refreshing ? "animate-spin" : ""} />
+            </IconButton>
+          </Flex>
         </div>
-
-        {/* Proxies Table */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={mounted ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-          transition={{ duration: 0.5, delay: 0.4, ease: "easeOut" }}
-          className="flex flex-1 flex-col overflow-hidden"
-        >
-          <Card className="flex flex-1 flex-col">
-            <Flex direction="column" gap="3" mb="4" p="2">
-              <Flex justify="between" align="center" wrap="wrap" gap="2">
-                <Text size="3" weight="bold">
-                  {t("proxy.allProxies")}
-                </Text>
-                <Flex gap="2" wrap="wrap" align="center">
-                  <TextField.Root
-                    size="2"
-                    placeholder={t("proxy.searchProxies")}
-                    className="min-w-32 flex-1"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                  >
-                    <TextField.Slot>
-                      <Icon icon="lucide:search" width="16" height="16" />
-                    </TextField.Slot>
-                    {search && (
-                      <TextField.Slot
-                        pr="2"
-                        onClick={() => setSearch("")}
-                        style={{ cursor: "pointer" }}
-                      >
-                        <Icon icon="lucide:x" width="16" height="16" />
-                      </TextField.Slot>
-                    )}
-                  </TextField.Root>
-                  <Button variant="soft" onClick={refreshProxies} disabled={refreshing}>
-                    <Icon
-                      icon="lucide:refresh-cw"
-                      width="14"
-                      height="14"
-                      className={refreshing ? "animate-spin" : ""}
-                    />
-                    {t("proxy.refresh")}
-                  </Button>
-                  <Button variant="soft" color="gray" onClick={() => navigate("/import")}>
-                    <Icon icon="lucide:file-input" width="16" height="16" />
-                    {t("nav.import")}
-                  </Button>
-                  <Button onClick={() => navigate("/proxies/new")}>
-                    <Icon icon="lucide:plus" width="16" height="16" />
-                    {t("proxy.addProxy")}
-                  </Button>
-                </Flex>
-              </Flex>
-            </Flex>
-
-            {proxies.length === 0 ? (
-              <EmptyState
-                title={t("proxy.noProxies")}
-                description={t("proxy.addFirstProxy")}
-                actionText={t("proxy.createYourFirstProxy")}
-                onAction={() => navigate("/proxies/new")}
-              />
-            ) : (
-              <>
-              <div className="overflow-x-auto">
-                <Table.Root>
-                  <Table.Header>
-                    <Table.Row>
-                      <Table.ColumnHeaderCell>{t("common.name")}</Table.ColumnHeaderCell>
-                      <Table.ColumnHeaderCell>{t("common.type")}</Table.ColumnHeaderCell>
-                      <Table.ColumnHeaderCell>{t("proxy.server")}</Table.ColumnHeaderCell>
-                      <Table.ColumnHeaderCell>{t("proxy.localIP")}</Table.ColumnHeaderCell>
-                      <Table.ColumnHeaderCell>{t("proxy.localPort")}</Table.ColumnHeaderCell>
-                      <Table.ColumnHeaderCell>{t("proxy.remotePortOrDomain")}</Table.ColumnHeaderCell>
-                      <Table.ColumnHeaderCell>{t("proxy.bootStatus")}</Table.ColumnHeaderCell>
-                      <Table.ColumnHeaderCell>{t("common.status")}</Table.ColumnHeaderCell>
-                      <Table.ColumnHeaderCell>{t("common.actions")}</Table.ColumnHeaderCell>
-                    </Table.Row>
-                  </Table.Header>
-                  <Table.Body>
-                    {proxies.map((proxy) => (
-
-                      <Table.Row key={proxy.id}>
-                        <Table.Cell>
-                          <Text weight="medium">{proxy.name || <Text color="gray">-</Text>}</Text>
-                        </Table.Cell>
-                        <Table.Cell>
-                          <Badge variant="surface">{proxy.proxyType.toUpperCase()}</Badge>
-                        </Table.Cell>
-                        <Table.Cell>
-                          {(proxy as { expand?: { serverId?: { serverName?: string } } }).expand?.serverId ? (
+        {loading ? (
+          <Flex justify="center" py="8">
+            <Spinner size="3" />
+          </Flex>
+        ) : proxies.length === 0 ? (
+          <EmptyState
+            title={search ? t("ux.noMatches") : t("proxy.noProxies")}
+            description={search ? t("ux.noMatchesHint") : t("proxy.addFirstProxy")}
+            actionText={search ? t("server.clearSearch") : t("proxy.addProxy")}
+            onAction={() => (search ? setSearch("") : navigate("/proxies/new"))}
+          />
+        ) : (
+          <>
+            <div className="resource-desktop">
+              <Table.Root>
+                <Table.Header>
+                  <Table.Row>
+                    <Table.ColumnHeaderCell>{t("common.name")}</Table.ColumnHeaderCell>
+                    <Table.ColumnHeaderCell>{t("ux.source")}</Table.ColumnHeaderCell>
+                    <Table.ColumnHeaderCell>{t("ux.destination")}</Table.ColumnHeaderCell>
+                    <Table.ColumnHeaderCell>{t("common.status")}</Table.ColumnHeaderCell>
+                    <Table.ColumnHeaderCell>{t("common.actions")}</Table.ColumnHeaderCell>
+                  </Table.Row>
+                </Table.Header>
+                <Table.Body>
+                  {proxies.map((proxy) => (
+                    <Table.Row key={proxy.id} align="center">
+                      <Table.Cell>
+                        <Flex direction="column" gap="1">
+                          <Link
+                            to={`/proxies/${proxy.id}/edit`}
+                            style={{
+                              color: "var(--accent-11)",
+                              fontWeight: 500,
+                              textDecoration: "none",
+                            }}
+                          >
+                            {proxy.name}
+                          </Link>
+                          <Flex gap="2" align="center">
+                            <Badge color="gray" variant="surface">
+                              {proxy.proxyType.toUpperCase()}
+                            </Badge>
                             <Link
                               to={`/servers/${proxy.serverId}`}
-                              style={{ textDecoration: "none" }}
+                              style={{ color: "var(--gray-11)", fontSize: 12 }}
                             >
-                              <Text size="2" color="blue" style={{ cursor: "pointer" }}>
-                                {(proxy as { expand?: { serverId?: { serverName?: string } } }).expand!.serverId!.serverName}
-                              </Text>
+                              {proxy.expand?.serverId?.serverName || "—"}
                             </Link>
-                          ) : (
-                            <Text size="2" color="gray">-</Text>
-                          )}
-                        </Table.Cell>
-                        <Table.Cell>
-                          {(() => {
-                            const ip = proxy.localIP || "127.0.0.1";
-                            const copyKey = `${proxy.id}-localIP`;
-                            const isCopied = copiedId === copyKey;
-                            return (
-                              <Flex
-                                align="center"
-                                gap="1"
-                                style={{ cursor: "pointer" }}
-                                onClick={() => handleCopy(ip, copyKey)}
-                                title={isCopied ? t("common.copied") : t("common.clickToCopy")}
-                              >
-                                <Text size="2" color="gray">{ip}</Text>
-                                <Icon
-                                  icon={isCopied ? "lucide:check" : "lucide:copy"}
-                                  width="12"
-                                  height="12"
-                                  color={isCopied ? "var(--green-9)" : "var(--gray-8)"}
-                                />
-                              </Flex>
-                            );
-                          })()}
-                        </Table.Cell>
-                        <Table.Cell>
-                          {proxy.localPort ? (() => {
-                            const copyKey = `${proxy.id}-localPort`;
-                            const isCopied = copiedId === copyKey;
-                            return (
-                              <Flex
-                                align="center"
-                                gap="1"
-                                style={{ cursor: "pointer" }}
-                                onClick={() => handleCopy(String(proxy.localPort), copyKey)}
-                                title={isCopied ? t("common.copied") : t("common.clickToCopy")}
-                              >
-                                <Text size="2">{proxy.localPort}</Text>
-                                <Icon
-                                  icon={isCopied ? "lucide:check" : "lucide:copy"}
-                                  width="12"
-                                  height="12"
-                                  color={isCopied ? "var(--green-9)" : "var(--gray-8)"}
-                                />
-                              </Flex>
-                            );
-                          })() : <Text size="2" color="gray">-</Text>}
-                        </Table.Cell>
-                        <Table.Cell>
-                          {(() => {
-                            if (proxy.proxyType === "http" || proxy.proxyType === "https") {
-                              const serverAddr =
-                                (proxy as { expand?: { serverId?: { serverAddr?: string } } }).expand?.serverId?.serverAddr || "";
-                              const items: string[] = [];
-                              if (proxy.subdomain) items.push(`${proxy.subdomain}.${serverAddr}`);
-                              if (proxy.customDomains && proxy.customDomains.length > 0)
-                                items.push(...proxy.customDomains);
-                              if (items.length === 0)
-                                return <Text size="2" color="gray">-</Text>;
-                              return (
-                                <Flex direction="column" gap="1">
-                                  {items.map((domain, i) => {
-                                    const copyKey = `${proxy.id}-domain-${i}`;
-                                    const isCopied = copiedId === copyKey;
-                                    return (
-                                      <Flex
-                                        key={i}
-                                        align="center"
-                                        gap="1"
-                                        style={{ cursor: "pointer" }}
-                                        onClick={() => handleCopy(domain, copyKey)}
-                                        title={isCopied ? t("common.copied") : t("common.clickToCopy")}
-                                      >
-                                        <Text size="2">{domain}</Text>
-                                        <Icon
-                                          icon={isCopied ? "lucide:check" : "lucide:copy"}
-                                          width="12"
-                                          height="12"
-                                          color={isCopied ? "var(--green-9)" : "var(--gray-8)"}
-                                        />
-                                      </Flex>
-                                    );
-                                  })}
-                                </Flex>
-                              );
-                            }
-                            const displayText = proxy.remotePort ? String(proxy.remotePort) : "";
-                            if (!displayText)
-                              return <Text size="2" color="gray">-</Text>;
-                            const copyKey = `${proxy.id}-port`;
-                            const isCopied = copiedId === copyKey;
-                            return (
-                              <Flex
-                                align="center"
-                                gap="1"
-                                style={{ cursor: "pointer" }}
-                                onClick={() => handleCopy(displayText, copyKey)}
-                                title={isCopied ? t("common.copied") : t("common.clickToCopy")}
-                              >
-                                <Text size="2">{displayText}</Text>
-                                <Icon
-                                  icon={isCopied ? "lucide:check" : "lucide:copy"}
-                                  width="12"
-                                  height="12"
-                                  color={isCopied ? "var(--green-9)" : "var(--gray-8)"}
-                                />
-                              </Flex>
-                            );
-                          })()}
-                        </Table.Cell>
-                        <Table.Cell>
-                          <Badge
-                            radius="full"
-                            color={proxy.bootStatus === "online" ? "green" : "red"}
-                            className={`animate-status-appear ${
-                              proxy.bootStatus === "online"
-                                ? "animate-status-pulse"
-                                : "animate-status-fade"
-                            }`}
-                          >
-                            <span
-                              className={`status-dot ${
-                                proxy.bootStatus === "online" ? "status-dot-green" : "status-dot-red"
-                              }`}
-                            />
-                            {proxy.bootStatus === "online" ? t("proxy.online") : t("proxy.offline")}
-                          </Badge>
-                        </Table.Cell>
-                        <Table.Cell>
-                          <button
-                            onClick={async () => {
-                              if (togglingId === proxy.id) return;
-                              setTogglingId(proxy.id);
-                              await onToggleStatus(proxy);
-                              setTogglingId(null);
-                            }}
-                            disabled={togglingId === proxy.id}
-                            style={{
-                              cursor: togglingId === proxy.id ? "not-allowed" : "pointer",
-                              background: "none",
-                              border: "none",
-                              padding: 0,
-                              opacity: togglingId === proxy.id ? 0.6 : 1,
-                              transition: "opacity 0.2s",
-                            }}
-                            title={proxy.status === "enabled" ? t("proxy.clickToDisable") : t("proxy.clickToEnable")}
-                          >
-                            <Badge color={proxy.status === "enabled" ? "green" : "gray"} style={{ cursor: "inherit" }}>
-                              {togglingId === proxy.id ? (
-                                <Icon icon="lucide:loader-2" width="12" height="12" className="animate-spin" />
-                              ) : (
-                                <Icon
-                                  icon={proxy.status === "enabled" ? "lucide:power" : "lucide:power-off"}
-                                  width="12"
-                                  height="12"
-                                />
-                              )}
-                              {proxy.status === "enabled" ? t("proxy.enabled") : t("proxy.disabled")}
-                            </Badge>
-                          </button>
-                        </Table.Cell>
-                        <Table.Cell>
-                          <Flex gap="2">
-                            <Button
-                              size="1"
-                              variant="soft"
-                              onClick={() => navigate(`/proxies/${proxy.id}/edit`)}
-                            >
-                              <Icon icon="lucide:pencil" width="14" height="14" />
-                              {t("common.edit")}
-                            </Button>
-                            <Button
-                              size="1"
-                              variant="soft"
-                              color="red"
-                              onClick={() => setDeleteId(proxy.id)}
-                            >
-                              <Icon icon="lucide:trash-2" width="14" height="14" />
-                              {t("common.delete")}
-                            </Button>
                           </Flex>
-                        </Table.Cell>
-                      </Table.Row>
-                    ))}
-                  </Table.Body>
-                </Table.Root>
-              </div>
-              {totalPages > 1 && (
-                <Flex justify="between" align="center" pt="4" px="1">
-                  <Text size="2" color="gray">
-                    {page} / {totalPages}
-                  </Text>
-                  <Flex align="center" style={{ border: "1px solid var(--gray-6)", borderRadius: "var(--radius-3)", overflow: "hidden" }}>
-                    <button
-                      disabled={page === 1}
-                      onClick={() => setPage(page - 1)}
-                      style={{
-                        padding: "6px 10px",
-                        background: "none",
-                        border: "none",
-                        borderRight: "1px solid var(--gray-6)",
-                        cursor: page === 1 ? "not-allowed" : "pointer",
-                        opacity: page === 1 ? 0.4 : 1,
-                        display: "flex",
-                        alignItems: "center",
-                      }}
-                    >
-                      <Icon icon="lucide:chevron-left" width="14" height="14" />
-                    </button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                      <button
-                        key={p}
-                        onClick={() => setPage(p)}
-                        style={{
-                          padding: "6px 12px",
-                          background: p === page ? "var(--accent-9)" : "none",
-                          color: p === page ? "white" : "inherit",
-                          border: "none",
-                          borderRight: p === totalPages ? "none" : "1px solid var(--gray-6)",
-                          cursor: "pointer",
-                          fontSize: "var(--font-size-2)",
-                          fontWeight: p === page ? 600 : 400,
-                        }}
+                        </Flex>
+                      </Table.Cell>
+                      <Table.Cell>
+                        {proxy.plugin?.type === "socks5" ? (
+                          "SOCKS5"
+                        ) : (
+                          <CopyAddress
+                            value={`${proxy.localIP || "127.0.0.1"}:${proxy.localPort || "—"}`}
+                          />
+                        )}
+                      </Table.Cell>
+                      <Table.Cell>
+                        <CopyAddress value={target(proxy)} />
+                      </Table.Cell>
+                      <Table.Cell>{status(proxy)}</Table.Cell>
+                      <Table.Cell>{actions(proxy)}</Table.Cell>
+                    </Table.Row>
+                  ))}
+                </Table.Body>
+              </Table.Root>
+            </div>
+            <div className="resource-mobile">
+              {proxies.map((proxy) => (
+                <Card key={proxy.id}>
+                  <Flex direction="column" gap="3">
+                    <Flex justify="between" gap="2">
+                      <Link
+                        to={`/proxies/${proxy.id}/edit`}
+                        style={{ color: "var(--accent-11)", fontWeight: 500 }}
                       >
-                        {p}
-                      </button>
-                    ))}
-                    <button
-                      disabled={page === totalPages}
-                      onClick={() => setPage(page + 1)}
-                      style={{
-                        padding: "6px 10px",
-                        background: "none",
-                        border: "none",
-                        borderLeft: "1px solid var(--gray-6)",
-                        cursor: page === totalPages ? "not-allowed" : "pointer",
-                        opacity: page === totalPages ? 0.4 : 1,
-                        display: "flex",
-                        alignItems: "center",
-                      }}
-                    >
-                      <Icon icon="lucide:chevron-right" width="14" height="14" />
-                    </button>
+                        {proxy.name}
+                      </Link>
+                      {status(proxy)}
+                    </Flex>
+                    <Text size="1" color="gray">
+                      {proxy.proxyType.toUpperCase()} · {proxy.expand?.serverId?.serverName || "—"}
+                    </Text>
+                    <Text size="2">
+                      <CopyAddress
+                        value={`${proxy.localIP || "127.0.0.1"}:${proxy.localPort || "—"}`}
+                      />
+                    </Text>
+                    <Flex gap="2" align="center">
+                      <Icon icon="lucide:arrow-right" />
+                      <CopyAddress value={target(proxy)} />
+                    </Flex>
+                    <Flex justify="end">{actions(proxy)}</Flex>
                   </Flex>
-                </Flex>
-              )}
-              </>
-            )}
-          </Card>
-        </motion.div>
-      </Flex>
-
-      <AlertDialog.Root open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-        <AlertDialog.Content maxWidth="450px">
+                </Card>
+              ))}
+            </div>
+            <ListPagination page={page} totalPages={totalPages} setPage={setPage} />
+          </>
+        )}
+      </Card>
+      <AlertDialog.Root open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialog.Content maxWidth="440px">
           <AlertDialog.Title>{t("proxy.confirmDeletion")}</AlertDialog.Title>
-          <AlertDialog.Description size="2">
-            {t("proxy.deleteConfirmMessage")}
-          </AlertDialog.Description>
-          <Flex gap="3" mt="4" justify="end">
+          <AlertDialog.Description>{t("proxy.deleteConfirmMessage")}</AlertDialog.Description>
+          <Flex justify="end" gap="3" mt="4">
             <AlertDialog.Cancel>
               <Button variant="soft" color="gray">
-                <Icon icon="lucide:x" width="16" height="16" />
                 {t("common.cancel")}
               </Button>
             </AlertDialog.Cancel>
-            <AlertDialog.Action>
-              <Button
-                variant="solid"
-                color="red"
-                onClick={() => {
-                  if (deleteId) {
-                    onDeleteProxy(deleteId);
-                    setDeleteId(null);
-                  }
-                }}
-              >
-                <Icon icon="lucide:trash-2" width="16" height="16" />
-                {t("common.delete")}
-              </Button>
-            </AlertDialog.Action>
+            <Button
+              color="red"
+              disabled={busy !== null}
+              onClick={async () => {
+                if (!deleteId) return;
+                setBusy(deleteId);
+                try {
+                  await onDeleteProxy(deleteId);
+                  setDeleteId(null);
+                } finally {
+                  setBusy(null);
+                }
+              }}
+            >
+              {t("common.delete")}
+            </Button>
           </Flex>
         </AlertDialog.Content>
       </AlertDialog.Root>
-    </>
+    </Flex>
   );
 }

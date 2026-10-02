@@ -117,3 +117,5 @@ Deployment and independent runtime updates are documented in [the external-clien
 ### Container distribution
 
 `.github/workflows/packages.yml` publishes separate panel and FRPC images to GHCR for AMD64/ARM64. `deploy/docker-compose.yml` consumes versioned packages; `deploy/docker-compose.local.yaml` builds locally. Release Git tags use `podux-v*`, keeping the upstream binary-release workflow independent. The shared data volume and private FRPC API contract are unchanged.
+
+Host-network deployments set `FRPC_API_BIND=127.0.0.1` and `FRPC_API_PORT=7401` in both services, with `FRPC_API_URL=http://127.0.0.1:7401` in the panel. Startup retries a saved auto-connect profile until the API returns; a manual stop is not undone by polling. The entrypoint validates persisted configuration and restores a valid previous copy on failure. Secrets remain shared only in the private data directory and env file.

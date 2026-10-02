@@ -58,3 +58,5 @@ The packaged Compose uses the same `podux-local` project and data volume as the 
 Override image tags with `PODUX_VERSION` and `FRPC_IMAGE_VERSION`. Keep `FRP_VERSION` equal to the binary version to display the correct client label. `deploy/docker-compose.local.yaml` remains available for development builds.
 
 Publishing is defined in `.github/workflows/packages.yml`: pushes to `main` update `latest` and commit tags; a `podux-v0.2.0` Git tag publishes the two release tags above. Package visibility must be Public for unauthenticated pulls. No local credential file or runtime data is included in the build context.
+
+For Linux host networking, configure `FRPC_API_BIND=127.0.0.1`, `FRPC_API_PORT=7401`, and `FRPC_API_URL=http://127.0.0.1:7401` consistently. Use host networking for both containers. Override the panel listen command and healthcheck to the chosen LAN address/port. Never bind the client admin API to a LAN/public address in host mode. The entrypoint restores a verified previous runtime config if the current file is invalid; it exits if neither is valid.

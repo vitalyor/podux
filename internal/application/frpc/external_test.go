@@ -116,3 +116,19 @@ func TestActiveProfileSurvivesPanelRecreation(t *testing.T) {
 		t.Fatal("stopped profile still active")
 	}
 }
+
+func TestAdminConfigSupportsPrivateHostAPI(t *testing.T) {
+	t.Setenv("FRPC_API_BIND", "127.0.0.1")
+	t.Setenv("FRPC_API_PORT", "7401")
+	fs := &Service{username: "podux", password: "secret"}
+	cfg, err := fs.adminConfig()
+	if err != nil || cfg.Addr != "127.0.0.1" || cfg.Port != 7401 {
+		t.Fatalf("unexpected API binding: %+v %v", cfg, err)
+	}
+	for _, port := range []string{"0", "65536", "not-a-port"} {
+		t.Setenv("FRPC_API_PORT", port)
+		if _, err := fs.adminConfig(); err == nil {
+			t.Fatal("accepted invalid API port")
+		}
+	}
+}

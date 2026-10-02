@@ -6,9 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -152,6 +154,25 @@ func (fs *Service) applyConfig(next []byte) error {
 	return errors.New("frpc did not return after restart; previous configuration restored")
 }
 
+func (fs *Service) adminConfig() (v1.WebServerConfig, error) {
+	addr := os.Getenv("FRPC_API_BIND")
+	if addr == "" {
+		addr = "0.0.0.0"
+	}
+	port := 7400
+	if value := os.Getenv("FRPC_API_PORT"); value != "" {
+		parsed, err := strconv.Atoi(value)
+		if err != nil || parsed < 1 || parsed > 65535 {
+			return v1.WebServerConfig{}, errors.New("invalid FRPC_API_PORT")
+		}
+		port = parsed
+	}
+	if net.ParseIP(addr) == nil {
+		return v1.WebServerConfig{}, errors.New("invalid FRPC_API_BIND")
+	}
+	return v1.WebServerConfig{Addr: addr, Port: port, User: fs.username, Password: fs.password}, nil
+}
+
 func (fs *Service) profileConfig(id string) ([]byte, error) {
 	cfg, err := fs.genCommonCfgs(&id)
 	if err != nil {
@@ -163,7 +184,10 @@ func (fs *Service) profileConfig(id string) ([]byte, error) {
 	}
 	fail := false
 	cfg.LoginFailExit = &fail
-	cfg.WebServer = v1.WebServerConfig{Addr: "0.0.0.0", Port: 7400, User: fs.username, Password: fs.password}
+	cfg.WebServer, err = fs.adminConfig()
+	if err != nil {
+		return nil, err
+	}
 	cfg.Log.DisablePrintColor = true
 	// Preserve the user's visible name; technical proxy names must remain unique.
 	common, err := json.Marshal(cfg)
@@ -219,9 +243,13 @@ func (fs *Service) TerminateFrpc(id *string) error {
 	if fs.activeID() != *id {
 		return nil
 	}
+	admin, err := fs.adminConfig()
+	if err != nil {
+		return err
+	}
 	// Park the client without tunnels; its private admin API stays reachable for the next start.
 	next, _ := json.Marshal(map[string]any{"serverAddr": "127.0.0.1", "serverPort": 9,
-		"loginFailExit": false, "webServer": map[string]any{"addr": "0.0.0.0", "port": 7400, "user": fs.username, "password": fs.password},
+		"loginFailExit": false, "webServer": admin,
 		"log": map[string]any{"to": "console", "level": "error", "disablePrintColor": true}})
 	if err := fs.applyConfig(next); err != nil {
 		return err
@@ -275,21 +303,34 @@ func (fs *Service) syncStatus() {
 	}
 }
 
+// Retry startup while the external API is unavailable. Once started, a manual stop
+// stays stopped until the next panel start; the status loop never relaunches it.
+func (fs *Service) tryAutoStart() bool {
+	records, err := fs.serverRepo.FindAllWithAutoConnect()
+	if err != nil {
+		return false
+	}
+	if len(records) == 0 {
+		return true
+	}
+	id := records[0].ID
+	if err := fs.LaunchFrpc(&id); err != nil {
+		fs.app.Logger().Warn("External frpc auto-start will retry", "error", err)
+		return false
+	}
+	return true
+}
+
 // Reconcile persisted status after a panel restart, without restarting healthy tunnels.
 func (fs *Service) AutoStartServers() {
-	fs.syncStatus()
-	if fs.activeID() == "" {
-		records, err := fs.serverRepo.FindAllWithAutoConnect()
-		if err == nil && len(records) > 0 {
-			id := records[0].ID
-			if err := fs.LaunchFrpc(&id); err != nil {
-				fs.app.Logger().Error("External frpc auto-start failed", "error", err)
-			}
-		}
-	}
+	pending := fs.activeID() == ""
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
-	for range ticker.C {
+	for {
 		fs.syncStatus()
+		if pending && fs.tryAutoStart() {
+			pending = false
+		}
+		<-ticker.C
 	}
 }

@@ -125,6 +125,9 @@ func main() {
 
 	// register custom routes
 	app.OnServe().BindFunc(func(e *core.ServeEvent) error {
+		if err := frpcService.EnsureRuntimeConfig(); err != nil {
+			return err
+		}
 		// Reset all server statuses to stopped on startup
 		serverService.ResetAllServerStatus()
 		// Reset all proxy statuses to offline on startup

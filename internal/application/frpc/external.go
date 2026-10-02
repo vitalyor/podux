@@ -237,20 +237,53 @@ func (fs *Service) ReloadFrpc(id *string) error {
 	return fs.applyConfig(next)
 }
 
+// Seed the shared config before either container needs to connect. The panel and
+// official client can start independently, including when the network is unavailable.
+func (fs *Service) EnsureRuntimeConfig() error {
+	path := filepath.Join(fs.runtimeDir, "frpc.json")
+	if _, err := os.Stat(path); err == nil {
+		return nil
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	if fs.password == "" {
+		return errors.New("FRPC_API_PASSWORD is required")
+	}
+	config, err := fs.parkConfig()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(fs.runtimeDir, 0700); err != nil {
+		return err
+	}
+	tmp := path + ".next"
+	if err := os.WriteFile(tmp, config, 0600); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
+}
+
+func (fs *Service) parkConfig() ([]byte, error) {
+	admin, err := fs.adminConfig()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(map[string]any{"serverAddr": "127.0.0.1", "serverPort": 9,
+		"loginFailExit": false, "webServer": admin,
+		"log": map[string]any{"to": "console", "level": "error", "disablePrintColor": true}})
+}
+
 func (fs *Service) TerminateFrpc(id *string) error {
 	fs.mu.Lock()
 	defer fs.mu.Unlock()
 	if fs.activeID() != *id {
 		return nil
 	}
-	admin, err := fs.adminConfig()
+	// Park the client without tunnels; its private admin API stays reachable for the next start.
+	next, err := fs.parkConfig()
 	if err != nil {
 		return err
 	}
-	// Park the client without tunnels; its private admin API stays reachable for the next start.
-	next, _ := json.Marshal(map[string]any{"serverAddr": "127.0.0.1", "serverPort": 9,
-		"loginFailExit": false, "webServer": admin,
-		"log": map[string]any{"to": "console", "level": "error", "disablePrintColor": true}})
 	if err := fs.applyConfig(next); err != nil {
 		return err
 	}

@@ -5,7 +5,7 @@ services:
     build:
       context: ..
       args:
-        VERSION: 0.1.6-external
+        VERSION: 0.2.2
     container_name: podux-local
     restart: unless-stopped
     ports:
@@ -17,23 +17,35 @@ services:
       TZ: Europe/Moscow
       FRPC_API_URL: http://frpc:7400
       FRPC_VERSION: ${FRP_VERSION:-0.71.0}
-    depends_on:
-      frpc:
-        condition: service_healthy
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     logging:
       driver: json-file
       options: {max-size: "5m", max-file: "3"}
   frpc:
-    image: podux-frpc:${FRP_VERSION:-0.71.0}
-    build:
-      context: ..
-      dockerfile: deploy/Dockerfile.frpc
-      args:
-        FRP_VERSION: ${FRP_VERSION:-0.71.0}
-        FRP_SHA256: ${FRP_SHA256:-}
+    image: ghcr.io/fatedier/frpc:v${FRP_VERSION:-0.71.0}
     container_name: podux-frpc
+    user: "1000:1000"
+    working_dir: /app
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+          config=/app/pb_data/runtime/frpc.json
+          while [ ! -s "$$config" ]; do sleep 1; done
+          if ! frpc verify -c "$$config" >/dev/null 2>&1; then
+            previous=/app/pb_data/runtime/frpc.previous.json
+            frpc verify -c "$$previous" >/dev/null 2>&1 || exit 1
+            cp "$$previous" "$$config.next"
+            mv "$$config.next" "$$config"
+            echo "Restored the previous valid FRPC configuration" >&2
+          fi
+          exec frpc -c "$$config"
+    healthcheck:
+      test: [CMD, wget, -q, --spider, "http://127.0.0.1:7400/healthz"]
+      interval: 10s
+      timeout: 3s
+      start_period: 20s
+      retries: 4
     restart: unless-stopped
     env_file: .env.external.local
     volumes:

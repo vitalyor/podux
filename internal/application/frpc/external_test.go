@@ -132,3 +132,32 @@ func TestAdminConfigSupportsPrivateHostAPI(t *testing.T) {
 		}
 	}
 }
+
+func TestRuntimeBootstrapPreservesPersistedConfiguration(t *testing.T) {
+	t.Setenv("FRPC_API_BIND", "127.0.0.1")
+	t.Setenv("FRPC_API_PORT", "7401")
+	fs := &Service{runtimeDir: t.TempDir(), username: "podux", password: "secret"}
+	if err := fs.EnsureRuntimeConfig(); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(fs.runtimeDir, "frpc.json")
+	data, _ := os.ReadFile(path)
+	if !strings.Contains(string(data), `"addr":"127.0.0.1"`) {
+		t.Fatal("wrong API address")
+	}
+	before := []byte(`{"serverAddr":"production","proxies":[{"name":"existing"}]}`)
+	if err := os.WriteFile(path, before, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := fs.EnsureRuntimeConfig(); err != nil {
+		t.Fatal(err)
+	}
+	after, _ := os.ReadFile(path)
+	if string(after) != string(before) {
+		t.Fatal("bootstrap overwrote persistent tunnels")
+	}
+	info, _ := os.Stat(path)
+	if info.Mode().Perm() != 0600 {
+		t.Fatal("configuration is not private")
+	}
+}

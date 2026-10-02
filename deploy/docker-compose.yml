@@ -1,7 +1,7 @@
 name: podux-local
 services:
   podux:
-    image: ghcr.io/vitalyor/podux:${PODUX_VERSION:-0.2.0}
+    image: ghcr.io/vitalyor/podux:${PODUX_VERSION:-0.2.2}
     restart: unless-stopped
     ports:
       - "127.0.0.1:17402:8090"
@@ -12,16 +12,34 @@ services:
       TZ: Europe/Moscow
       FRPC_API_URL: http://frpc:7400
       FRPC_VERSION: ${FRP_VERSION:-0.71.0}
-    depends_on:
-      frpc:
-        condition: service_healthy
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     logging:
       driver: json-file
       options: {max-size: "5m", max-file: "3"}
   frpc:
-    image: ghcr.io/vitalyor/podux-frpc:${FRPC_IMAGE_VERSION:-0.71.0-podux.0.2.0}
+    image: ghcr.io/fatedier/frpc:v${FRP_VERSION:-0.71.0}
+    user: "1000:1000"
+    working_dir: /app
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+          config=/app/pb_data/runtime/frpc.json
+          while [ ! -s "$$config" ]; do sleep 1; done
+          if ! frpc verify -c "$$config" >/dev/null 2>&1; then
+            previous=/app/pb_data/runtime/frpc.previous.json
+            frpc verify -c "$$previous" >/dev/null 2>&1 || exit 1
+            cp "$$previous" "$$config.next"
+            mv "$$config.next" "$$config"
+            echo "Restored the previous valid FRPC configuration" >&2
+          fi
+          exec frpc -c "$$config"
+    healthcheck:
+      test: [CMD, wget, -q, --spider, "http://127.0.0.1:7400/healthz"]
+      interval: 10s
+      timeout: 3s
+      start_period: 20s
+      retries: 4
     restart: unless-stopped
     env_file: .env.external.local
     volumes:

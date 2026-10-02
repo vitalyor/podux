@@ -22,5 +22,5 @@ RUN apk add --no-cache ca-certificates wget tar && \
 WORKDIR /app
 COPY deploy/frpc-entrypoint.sh /usr/local/bin/frpc-entrypoint
 USER podux
-HEALTHCHECK --interval=10s --timeout=3s --start-period=5s CMD wget -q --spider http://127.0.0.1:7400/healthz || exit 1
+HEALTHCHECK --interval=10s --timeout=3s --start-period=5s CMD wget -q --spider http://127.0.0.1:${FRPC_API_PORT:-7400}/healthz || exit 1
 ENTRYPOINT ["sh", "/usr/local/bin/frpc-entrypoint"]

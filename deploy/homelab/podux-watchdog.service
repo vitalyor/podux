@@ -1,0 +1,7 @@
+[Unit]
+Description=Recover unhealthy Podux containers
+After=docker.service
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/podux/watchdog.py
+TimeoutStartSec=90

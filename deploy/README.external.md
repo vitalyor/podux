@@ -38,3 +38,9 @@ The Compose command is a small startup guard: wait for persistent config, valida
 `deploy/docker-compose.local.yaml` builds only the panel for development and uses the same official client. `.github/workflows/packages.yml` publishes only Podux for AMD64/ARM64, with `latest`, commit and `podux-v*` release tags.
 
 For Linux host networking, configure `FRPC_API_BIND=127.0.0.1`, `FRPC_API_PORT=7401`, and `FRPC_API_URL=http://127.0.0.1:7401` consistently. Both containers need host networking. Override panel listen and both healthchecks accordingly. `127.0.0.1` tunnel targets then retain their host meaning. Never bind the client admin API to a LAN/public address in host mode.
+
+## CasaOS homelab installation
+
+`deploy/docker-compose.casaos.yml` contains both services, host networking, an icon/title, LAN panel binding and the loopback-only client API. Adjust the LAN address before using it on another machine. Create `/DATA/AppData/podux/data` with UID/GID 1000 and a private `/DATA/AppData/podux/.env` credential file; install through CasaOS's custom Compose import. Keep the generated CasaOS Compose file private because CasaOS may expand environment secrets into it.
+
+Optional recovery units are in `deploy/homelab/`. Install `watchdog.py` and `backup.py` to `/opt/podux`, and the unit/timer files to `/etc/systemd/system`, then enable the stack and timers. The boot unit reads the canonical `/var/lib/casaos/apps/podux/docker-compose.yml`, preventing drift between CasaOS and systemd. The backup directory is root-only and contains secrets; never publish it. Validate the env paths, app id and mount before enabling these units.

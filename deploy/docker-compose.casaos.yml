@@ -1,0 +1,99 @@
+name: podux
+services:
+  podux:
+    image: ghcr.io/vitalyor/podux:0.2.2
+    container_name: podux
+    network_mode: host
+    restart: unless-stopped
+    init: true
+    env_file: /DATA/AppData/podux/.env
+    environment:
+      TZ: Europe/Moscow
+      FRPC_API_URL: http://127.0.0.1:7401
+      FRPC_API_BIND: 127.0.0.1
+      FRPC_API_PORT: "7401"
+      FRPC_VERSION: 0.71.0
+    command: [serve, --http, "192.168.10.210:17402"]
+    volumes:
+      - /DATA/AppData/podux/data:/app/pb_data
+    read_only: true
+    tmpfs: ["/tmp:size=32m,mode=1777"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    stop_grace_period: 30s
+    mem_limit: 512m
+    healthcheck:
+      test: [CMD, wget, -q, --spider, "http://192.168.10.210:17402/api/health"]
+      interval: 15s
+      timeout: 3s
+      retries: 4
+      start_period: 20s
+    labels:
+      icon: https://raw.githubusercontent.com/vitalyor/podux/podux-v0.2.2/deploy/podux-icon.svg
+    logging:
+      driver: json-file
+      options: {max-size: "5m", max-file: "3"}
+  frpc:
+    image: ghcr.io/fatedier/frpc:v0.71.0
+    user: "1000:1000"
+    working_dir: /app
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+          while [ ! -s /app/pb_data/runtime/frpc.json ]; do sleep 1; done
+          if ! frpc verify -c /app/pb_data/runtime/frpc.json >/dev/null 2>&1; then
+            frpc verify -c /app/pb_data/runtime/frpc.previous.json >/dev/null 2>&1 || exit 1
+            cp /app/pb_data/runtime/frpc.previous.json /app/pb_data/runtime/frpc.json.next
+            mv /app/pb_data/runtime/frpc.json.next /app/pb_data/runtime/frpc.json
+            echo "Restored the previous valid FRPC configuration" >&2
+          fi
+          exec frpc -c /app/pb_data/runtime/frpc.json
+    container_name: podux-frpc
+    network_mode: host
+    restart: unless-stopped
+    init: true
+    env_file: /DATA/AppData/podux/.env
+    environment:
+      TZ: Europe/Moscow
+      FRPC_API_BIND: 127.0.0.1
+      FRPC_API_PORT: "7401"
+    volumes:
+      - /DATA/AppData/podux/data:/app/pb_data
+    read_only: true
+    tmpfs: ["/tmp:size=16m,mode=1777"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    stop_grace_period: 30s
+    mem_limit: 128m
+    healthcheck:
+      test: [CMD, wget, -q, --spider, "http://127.0.0.1:7401/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 4
+      start_period: 20s
+    labels:
+      icon: https://raw.githubusercontent.com/vitalyor/podux/podux-v0.2.2/deploy/podux-icon.svg
+    logging:
+      driver: json-file
+      options: {max-size: "5m", max-file: "3"}
+x-casaos:
+  architectures: [amd64, arm64]
+  author: vitalyor
+  category: Network
+  developer: vitalyor
+  main: podux
+  icon: https://raw.githubusercontent.com/vitalyor/podux/podux-v0.2.2/deploy/podux-icon.svg
+  hostname: "192.168.10.210"
+  port_map: "17402"
+  scheme: http
+  index: /
+  title:
+    custom: Podux · FRP
+    en_us: Podux
+    ru_ru: Podux · FRP
+  tagline:
+    en_us: FRP tunnels and connection management
+    ru_ru: Туннели и подключения FRP
+  description:
+    en_us: Manage homelab FRP tunnels with an independent external client.
+    ru_ru: Панель управления туннелями лабы. Отдельный FRPC продолжает работать при остановке панели.

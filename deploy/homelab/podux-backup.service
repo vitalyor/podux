@@ -1,0 +1,7 @@
+[Unit]
+Description=Back up Podux configuration and database
+After=docker.service
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/podux/backup.py
+UMask=0077

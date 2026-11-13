@@ -269,3 +269,6 @@ func (fs *Service) StreamLog(serverId string, ctx context.Context, w http.Respon
 		}
 	}
 }
+
+// lastLines returns up to the last 200 lines of the file.
+func lastLines(f *os.File) []string { return utils.ReadLastNLines(f, 200) }

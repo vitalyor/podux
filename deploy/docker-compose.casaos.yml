@@ -1,7 +1,7 @@
 name: podux
 services:
   podux:
-    image: ghcr.io/vitalyor/podux:0.2.2
+    image: ghcr.io/vitalyor/podux:0.3.0
     container_name: podux
     network_mode: host
     restart: unless-stopped
@@ -29,7 +29,7 @@ services:
       retries: 4
       start_period: 20s
     labels:
-      icon: https://raw.githubusercontent.com/vitalyor/podux/podux-v0.2.2/deploy/podux-icon.svg
+      icon: https://raw.githubusercontent.com/vitalyor/podux/podux-v0.3.0/deploy/podux-icon.svg
     logging:
       driver: json-file
       options: {max-size: "5m", max-file: "3"}
@@ -37,17 +37,8 @@ services:
     image: ghcr.io/fatedier/frpc:v0.71.0
     user: "1000:1000"
     working_dir: /app
-    entrypoint: ["/bin/sh", "-ec"]
-    command:
-      - |
-          while [ ! -s /app/pb_data/runtime/frpc.json ]; do sleep 1; done
-          if ! frpc verify -c /app/pb_data/runtime/frpc.json >/dev/null 2>&1; then
-            frpc verify -c /app/pb_data/runtime/frpc.previous.json >/dev/null 2>&1 || exit 1
-            cp /app/pb_data/runtime/frpc.previous.json /app/pb_data/runtime/frpc.json.next
-            mv /app/pb_data/runtime/frpc.json.next /app/pb_data/runtime/frpc.json
-            echo "Restored the previous valid FRPC configuration" >&2
-          fi
-          exec frpc -c /app/pb_data/runtime/frpc.json
+    # One frpc per enabled connection (runtime/clients/<id>/); see deploy/frpc-supervisor.sh.
+    entrypoint: ["/bin/sh", "/supervisor.sh"]
     container_name: podux-frpc
     network_mode: host
     restart: unless-stopped
@@ -59,6 +50,7 @@ services:
       FRPC_API_PORT: "7401"
     volumes:
       - /DATA/AppData/podux/data:/app/pb_data
+      - /opt/podux/frpc-supervisor.sh:/supervisor.sh:ro
     read_only: true
     tmpfs: ["/tmp:size=16m,mode=1777"]
     cap_drop: [ALL]
@@ -66,13 +58,13 @@ services:
     stop_grace_period: 30s
     mem_limit: 128m
     healthcheck:
-      test: [CMD, wget, -q, --spider, "http://127.0.0.1:7401/healthz"]
+      test: [CMD, /bin/sh, /supervisor.sh, health]
       interval: 10s
       timeout: 3s
       retries: 4
       start_period: 20s
     labels:
-      icon: https://raw.githubusercontent.com/vitalyor/podux/podux-v0.2.2/deploy/podux-icon.svg
+      icon: https://raw.githubusercontent.com/vitalyor/podux/podux-v0.3.0/deploy/podux-icon.svg
     logging:
       driver: json-file
       options: {max-size: "5m", max-file: "3"}
@@ -82,7 +74,7 @@ x-casaos:
   category: Network
   developer: vitalyor
   main: podux
-  icon: https://raw.githubusercontent.com/vitalyor/podux/podux-v0.2.2/deploy/podux-icon.svg
+  icon: https://raw.githubusercontent.com/vitalyor/podux/podux-v0.3.0/deploy/podux-icon.svg
   hostname: "192.168.10.210"
   port_map: "17402"
   scheme: http

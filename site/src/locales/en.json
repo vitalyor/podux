@@ -270,7 +270,8 @@
     "deleteSuccess": "Server deleted successfully",
     "updateSuccess": "Server updated successfully",
     "createSuccess": "Server created successfully",
-    "connectionHelp": "Connection profile for the external frpc client. Only one profile can be active; stop it before switching."
+    "connectionHelp": "Connection profile for the external frpc client. Only one profile can be active; stop it before switching.",
+    "connectionError": "Connection error"
   },
   "proxy": {
     "title": "Proxies",
@@ -557,7 +558,7 @@
     "copyFailed": "Could not copy the address",
     "previousPage": "Previous page",
     "nextPage": "Next page",
-    "connectionsListHint": "One active FRP server connection. Its tunnels run through the external client.",
+    "connectionsListHint": "Each enabled connection runs its own frpc process. A tunnel is published through the connection chosen in its settings.",
     "tlsOn": "TLS enabled",
     "tlsOff": "TLS disabled",
     "showPassword": "Show password",

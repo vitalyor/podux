@@ -270,7 +270,8 @@
     "deleteSuccess": "Server deleted successfully",
     "updateSuccess": "Server updated successfully",
     "createSuccess": "Server created successfully",
-    "connectionHelp": "独立 frpc 客户端的连接配置。同一时间只能启用一个配置，切换前请先停止当前配置。"
+    "connectionHelp": "独立 frpc 客户端的连接配置。同一时间只能启用一个配置，切换前请先停止当前配置。",
+    "connectionError": "连接错误"
   },
   "proxy": {
     "title": "代理",
@@ -557,7 +558,7 @@
     "copyFailed": "无法复制地址",
     "previousPage": "上一页",
     "nextPage": "下一页",
-    "connectionsListHint": "一次可启动一个 FRP 服务器连接，其隧道由独立客户端运行。",
+    "connectionsListHint": "每个已启用的连接运行独立的 frpc 进程，隧道通过其设置中选择的连接发布。",
     "tlsOn": "TLS 已启用",
     "tlsOff": "TLS 已禁用",
     "showPassword": "显示密码",

@@ -41,6 +41,11 @@ func (h *FrpcHandler) RegisterHandlers(e *core.ServeEvent) {
 		return e.JSON(200, map[string]string{"message": "frpc started"})
 	}))
 
+	// Per-connection state and the last error lines of each connection's log.
+	e.Router.GET("/api/frpc/status", requireAuth(func(e *core.RequestEvent) error {
+		return e.JSON(200, h.service.Statuses())
+	}))
+
 	e.Router.GET("/api/frpc/logs/stream", requireAuth(func(e *core.RequestEvent) error {
 		id := e.Request.URL.Query().Get("id")
 		if id == "" {

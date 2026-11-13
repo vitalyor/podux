@@ -10,6 +10,7 @@ import {
   DropdownMenu,
   IconButton,
   Spinner,
+  Tooltip,
 } from "@radix-ui/themes";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -57,33 +58,50 @@ export function ServersView({
   const changeConnection = async (server: Server) => {
     setBusy(server.id);
     try {
-      await (server.bootStatus === "running"
+      await (server.bootStatus !== "stopped"
         ? terminateServer(server.id)
         : launchServer(server.id));
     } finally {
       setBusy(null);
     }
   };
-  const status = (server: Server) => (
-    <Badge variant="soft" color={server.bootStatus === "running" ? "green" : "gray"}>
-      {t(server.bootStatus === "running" ? "server.running" : "server.stopped")}
-    </Badge>
-  );
+  // Each connection has its own frpc: "error" means enabled, but its server is unreachable.
+  const status = (server: Server) => {
+    const badge = (
+      <Badge
+        variant="soft"
+        color={{ running: "green", error: "red" }[server.bootStatus] as "green" | "red" | undefined ?? "gray"}
+      >
+        {t(
+          server.bootStatus === "running"
+            ? "server.running"
+            : server.bootStatus === "error"
+              ? "server.connectionError"
+              : "server.stopped"
+        )}
+      </Badge>
+    );
+    return server.bootStatus === "error" && server.lastErrors?.length ? (
+      <Tooltip content={server.lastErrors.join("\n")}>{badge}</Tooltip>
+    ) : (
+      badge
+    );
+  };
   const actions = (server: Server) => (
     <Flex gap="2" align="center">
       <Button
         size="1"
         variant="soft"
-        color={server.bootStatus === "running" ? "gray" : undefined}
+        color={server.bootStatus !== "stopped" ? "gray" : undefined}
         disabled={busy !== null}
         onClick={() => changeConnection(server)}
       >
         {busy === server.id ? (
           <Spinner size="1" />
         ) : (
-          <Icon icon={server.bootStatus === "running" ? "lucide:pause" : "lucide:play"} />
+          <Icon icon={server.bootStatus !== "stopped" ? "lucide:pause" : "lucide:play"} />
         )}
-        {t(server.bootStatus === "running" ? "server.stop" : "server.launch")}
+        {t(server.bootStatus !== "stopped" ? "server.stop" : "server.launch")}
       </Button>
       <DropdownMenu.Root>
         <DropdownMenu.Trigger>

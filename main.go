@@ -15,6 +15,7 @@ import (
 	"podux/internal/application/server"
 	"podux/internal/application/system"
 	"podux/internal/application/version"
+	proxydomain "podux/internal/domain/proxy"
 	"podux/internal/infrastructure/persistence"
 	httphandler "podux/internal/interfaces/http"
 	_ "podux/migrations"
@@ -74,6 +75,20 @@ func main() {
 		}
 		return e.Next()
 	}
+	// Names, remote ports and domains must be unique within one connection only.
+	checkConflicts := func(e *core.RecordEvent) error {
+		serverID := e.Record.GetString("serverId")
+		others, err := proxyRepo.FindByServerID(serverID)
+		if err != nil {
+			return err
+		}
+		if err := proxydomain.CheckConflicts(proxydomain.FromRecord(e.Record), others); err != nil {
+			return apis.NewBadRequestError(err.Error(), nil)
+		}
+		return e.Next()
+	}
+	app.OnRecordCreate("fh_proxies").BindFunc(checkConflicts)
+	app.OnRecordUpdate("fh_proxies").BindFunc(checkConflicts)
 	app.OnRecordAfterCreateSuccess("fh_proxies").BindFunc(reloadProxy)
 	app.OnRecordAfterDeleteSuccess("fh_proxies").BindFunc(reloadProxy)
 	app.OnRecordAfterUpdateSuccess("fh_proxies").BindFunc(func(e *core.RecordEvent) error {
@@ -115,17 +130,15 @@ func main() {
 	})
 	app.OnRecordDelete("fh_servers").BindFunc(func(e *core.RecordEvent) error {
 		id := e.Record.Id
-		if frpcService.IsServerRunning(id) {
-			if err := frpcService.TerminateFrpc(&id); err != nil {
-				return err
-			}
+		if err := frpcService.ForgetServer(id); err != nil {
+			return err
 		}
 		return e.Next()
 	})
 
 	// register custom routes
 	app.OnServe().BindFunc(func(e *core.ServeEvent) error {
-		if err := frpcService.EnsureRuntimeConfig(); err != nil {
+		if err := frpcService.EnsureRuntimeLayout(); err != nil {
 			return err
 		}
 		// Reset all server statuses to stopped on startup

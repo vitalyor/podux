@@ -114,6 +114,8 @@ export function ServerDetailPage() {
       case "running":
         return "green";
       case "stopped":
+        return "gray";
+      case "error":
         return "red";
       default:
         return "gray";
@@ -164,7 +166,7 @@ export function ServerDetailPage() {
               <Icon icon="lucide:arrow-left" width="16" height="16" />
               {t("server.backToServers")}
             </Button>
-            {server.bootStatus === "running" ? (
+            {server.bootStatus !== "stopped" ? (
               <Button
                 size="2"
                 color="red"
@@ -483,7 +485,7 @@ export function ServerDetailPage() {
                           className={`status-dot ${
                             server.bootStatus === "running"
                               ? "status-dot-green"
-                              : server.bootStatus === "stopped"
+                              : server.bootStatus === "error"
                                 ? "status-dot-red"
                                 : "status-dot-gray"
                           }`}
@@ -492,7 +494,7 @@ export function ServerDetailPage() {
                           ? t("server.running")
                           : server.bootStatus === "stopped"
                             ? t("server.stopped")
-                            : t("common.status")}
+                            : t("server.connectionError")}
                       </Badge>
                     </Flex>
                   </Box>

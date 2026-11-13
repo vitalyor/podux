@@ -2,7 +2,7 @@
 
 One Compose project, two independently versioned containers:
 
-- `ghcr.io/vitalyor/podux:0.2.2` — this fork's panel.
+- `ghcr.io/vitalyor/podux:0.3.0` — this fork's panel.
 - `ghcr.io/fatedier/frpc:v0.71.0` — the unmodified official FRPC image.
 
 The old `vitalyor/podux-frpc` package is deprecated and no longer built or used.
@@ -17,7 +17,7 @@ printf 'FRPC_API_USER=podux\nFRPC_API_PASSWORD=%s\n' "$(openssl rand -hex 32)" >
 docker compose -f deploy/docker-compose.yml up -d
 ```
 
-Open http://127.0.0.1:17402/. Keep the credential file and shared named volume. Never publish port 7400. The panel creates an initial private config atomically; the official client waits for it. Existing runtime configuration is never replaced by bootstrap. Stopping the panel leaves tunnels running. Only one saved connection profile is active at a time.
+Open http://127.0.0.1:17402/. Keep the credential file and shared named volume. Never publish port 7400. The panel creates an initial private config atomically; the official client waits for it. Existing runtime configuration is never replaced by bootstrap. Stopping the panel leaves tunnels running. Several connections can be enabled at once: `frpc-supervisor.sh` (mounted read-only next to the Compose file) runs one official frpc process per enabled connection, admin APIs on consecutive ports from `FRPC_API_PORT`.
 
 ## Update the official client independently
 
@@ -33,7 +33,7 @@ docker compose -f deploy/docker-compose.yml up -d --no-deps podux
 
 Panel code and images are unchanged. API/config changes in a future FRP release still require compatibility verification; independent versioning does not guarantee arbitrary future compatibility. Verify client logs, panel statuses and real service requests. Back up private data and retain the previous image before updates.
 
-The Compose command is a small startup guard: wait for persistent config, validate it, restore a valid previous copy if needed, then run the official binary. It lives in Compose, not a custom client image. No Docker socket is shared with either container. The client uses UID/GID 1000 to access the shared data.
+The client entrypoint is `deploy/frpc-supervisor.sh` (POSIX sh, busybox): per connection it validates the config, restores a valid previous copy if needed, runs the official binary and restarts it with backoff. It lives in Compose, not a custom client image. No Docker socket is shared with either container. The client uses UID/GID 1000 to access the shared data.
 
 `deploy/docker-compose.local.yaml` builds only the panel for development and uses the same official client. `.github/workflows/packages.yml` publishes only Podux for AMD64/ARM64, with `latest`, commit and `podux-v*` release tags.
 

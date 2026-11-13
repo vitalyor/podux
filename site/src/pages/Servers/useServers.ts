@@ -12,6 +12,8 @@ export interface Server {
   serverPort: number;
   description: string;
   bootStatus: string;
+  // Last warning/error lines of this connection's own frpc log (from /api/frpc/status)
+  lastErrors?: string[];
   autoConnection: boolean;
   created: string;
   updated: string;
@@ -92,8 +94,13 @@ export function useServers() {
         const res = await apiGet(`/api/servers?${params}`);
         if (!res.ok) throw new Error(i18n.t("server.fetchFailed"));
         const data = await res.json();
+        // Per-connection state is optional: the list still works if the clients are unreachable.
+        const states: { id: string; lastErrors?: string[] }[] = await apiGet("/api/frpc/status")
+          .then((r) => (r.ok ? r.json() : []))
+          .catch(() => []);
+        const errors = new Map(states.map((s) => [s.id, s.lastErrors]));
 
-        setServers(data.items);
+        setServers(data.items.map((s: Server) => ({ ...s, lastErrors: errors.get(s.id) })));
         setTotalPages(data.totalPages);
         initializedRef.current = true;
       } catch (err) {

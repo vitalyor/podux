@@ -5,7 +5,7 @@ services:
     build:
       context: ..
       args:
-        VERSION: 0.2.2
+        VERSION: 0.3.0
     container_name: podux-local
     restart: unless-stopped
     ports:
@@ -27,19 +27,10 @@ services:
     container_name: podux-frpc
     user: "1000:1000"
     working_dir: /app
-    entrypoint: ["/bin/sh", "-ec"]
-    command:
-      - |
-          while [ ! -s /app/pb_data/runtime/frpc.json ]; do sleep 1; done
-          if ! frpc verify -c /app/pb_data/runtime/frpc.json >/dev/null 2>&1; then
-            frpc verify -c /app/pb_data/runtime/frpc.previous.json >/dev/null 2>&1 || exit 1
-            cp /app/pb_data/runtime/frpc.previous.json /app/pb_data/runtime/frpc.json.next
-            mv /app/pb_data/runtime/frpc.json.next /app/pb_data/runtime/frpc.json
-            echo "Restored the previous valid FRPC configuration" >&2
-          fi
-          exec frpc -c /app/pb_data/runtime/frpc.json
+    # One frpc per enabled connection (runtime/clients/<id>/); see deploy/frpc-supervisor.sh.
+    entrypoint: ["/bin/sh", "/supervisor.sh"]
     healthcheck:
-      test: [CMD, wget, -q, --spider, "http://127.0.0.1:7400/healthz"]
+      test: [CMD, /bin/sh, /supervisor.sh, health]
       interval: 10s
       timeout: 3s
       start_period: 20s
@@ -48,6 +39,7 @@ services:
     env_file: .env.external.local
     volumes:
       - podux-data:/app/pb_data
+      - ./frpc-supervisor.sh:/supervisor.sh:ro
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     logging:

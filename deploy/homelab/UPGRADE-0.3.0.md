@@ -8,7 +8,16 @@
 - Healthcheck `podux-frpc` проверяет, что процессы живы, а не что серверы FRP доступны. Watchdog менять не нужно: если один сервер FRP лежит, контейнер он не перезапустит.
 - При первом старте podux 0.3.0 переносит `runtime/frpc.json` (и `frpc.previous.json`) в `runtime/clients/<id>/`, включает этот id и проставляет его туннелям с пустым `serverId`. Старые файлы остаются на месте. Повторный запуск ничего не меняет.
 
-## Выкладка (на 192.168.10.210, под root)
+## Быстрый путь
+
+```sh
+curl -fsSL -o /opt/podux/upgrade.sh https://raw.githubusercontent.com/vitalyor/podux/podux-v0.3.0/deploy/homelab/upgrade.sh
+sh /opt/podux/upgrade.sh 0.3.0
+```
+
+Скрипт делает всё то же, что ниже вручную: бэкап через `backup.py` (копия `pre-0.3.0-*.tar.gz` не удаляется ротацией), супервизор, compose, `pull`, `up -d --wait`, проверку доменов. В конце печатает команду отката (`sh /opt/podux/upgrade.sh rollback <архив>`).
+
+## Выкладка вручную (на 192.168.10.210, под root)
 
 ```sh
 set -eu
